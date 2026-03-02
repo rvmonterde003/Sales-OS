@@ -1,0 +1,162 @@
+import { NavLink, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Kanban,
+  Building2,
+  Users,
+  AlertTriangle,
+  Settings,
+  Scale,
+  Search,
+  Command,
+  ChevronDown,
+  ChevronRight,
+  Star,
+  BarChart3,
+} from 'lucide-react';
+import { useState } from 'react';
+
+const recordItems = [
+  { to: '/companies', icon: Building2, label: 'Companies', color: 'bg-purple-500' },
+  { to: '/contacts', icon: Users, label: 'People', color: 'bg-green-500' },
+  { to: '/pipeline', icon: Kanban, label: 'Deals', color: 'bg-orange-400' },
+];
+
+export default function Sidebar() {
+  const [reportsOpen, setReportsOpen] = useState(true);
+  const location = useLocation();
+
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <aside className="fixed left-0 top-0 bottom-0 w-[232px] bg-white border-r border-gray-200 flex flex-col z-50 select-none">
+      {/* Logo / Workspace */}
+      <div className="px-3 pt-3 pb-1">
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
+            <Scale className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+          </div>
+          <span className="text-[13px] font-semibold text-gray-900">LawShift</span>
+          <ChevronDown className="w-3 h-3 text-gray-400 ml-auto" />
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="px-3 pt-1 pb-2">
+        <button className="flex items-center gap-2 w-full px-2 py-1.5 text-[13px] text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
+          <Search className="w-3.5 h-3.5" />
+          <span>Quick actions</span>
+          <span className="ml-auto flex items-center gap-0.5 text-[11px] text-gray-400">
+            <Command className="w-3 h-3" />K
+          </span>
+        </button>
+      </div>
+
+      {/* Main nav scroll area */}
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
+        {/* Top nav items */}
+        <div className="space-y-0.5 pb-3">
+          <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} end />
+          <SidebarLink to="/risk-flags" icon={AlertTriangle} label="Notifications" active={isActive('/risk-flags')} />
+        </div>
+
+        {/* Reports section */}
+        <div className="pb-3">
+          <button
+            onClick={() => setReportsOpen(!reportsOpen)}
+            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider w-full hover:text-gray-600"
+          >
+            {reportsOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            Reports
+          </button>
+          {reportsOpen && (
+            <div className="mt-0.5 space-y-0.5">
+              <SidebarLink to="/" icon={BarChart3} label="Business Metrics" active={isActive('/')} end />
+            </div>
+          )}
+        </div>
+
+        {/* Favorites */}
+        <div className="pb-3">
+          <div className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
+            <ChevronDown className="w-3 h-3" />
+            Favorites
+          </div>
+          <div className="mt-0.5 space-y-0.5">
+            <SidebarLink to="/pipeline" icon={Star} label="Sales Pipeline" active={isActive('/pipeline')} iconColor="text-amber-500" />
+          </div>
+        </div>
+
+        {/* Records */}
+        <div className="pb-3">
+          <div className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
+            <ChevronDown className="w-3 h-3" />
+            Records
+          </div>
+          <div className="mt-0.5 space-y-0.5">
+            {recordItems.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={`sidebar-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] ${
+                  isActive(item.to) ? 'active font-medium' : 'text-gray-700'
+                }`}
+              >
+                <span className={`w-4 h-4 rounded ${item.color} flex items-center justify-center`}>
+                  <item.icon className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
+                </span>
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+
+        {/* Lists */}
+        <div className="pb-3">
+          <div className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
+            <ChevronDown className="w-3 h-3" />
+            Lists
+          </div>
+          <div className="mt-0.5 space-y-0.5">
+            <SidebarLink to="/risk-flags" icon={AlertTriangle} label="At-risk deals" active={isActive('/risk-flags')} iconColor="text-red-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-3 py-3 border-t border-gray-100">
+        <NavLink
+          to="/settings"
+          className={`sidebar-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] ${
+            isActive('/settings') ? 'active font-medium' : 'text-gray-500'
+          }`}
+        >
+          <Settings className="w-3.5 h-3.5" />
+          Settings
+        </NavLink>
+      </div>
+    </aside>
+  );
+}
+
+function SidebarLink({
+  to, icon: Icon, label, active, end, iconColor,
+}: {
+  to: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; label: string; active: boolean; end?: boolean; iconColor?: string;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={`sidebar-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] ${
+        active ? 'active font-medium' : 'text-gray-700'
+      }`}
+    >
+      <Icon className={`w-3.5 h-3.5 ${iconColor || (active ? 'text-violet-600' : 'text-gray-400')}`} strokeWidth={active ? 2 : 1.5} />
+      {label}
+    </NavLink>
+  );
+}
