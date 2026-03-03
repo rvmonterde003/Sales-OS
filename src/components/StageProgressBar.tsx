@@ -1,0 +1,65 @@
+import { Link } from 'react-router-dom';
+import { salesStages, getStageById } from '../data/mockData';
+
+interface StageProgressBarProps {
+  currentStageId: number;
+  compact?: boolean;
+  oppId?: string;
+}
+
+export default function StageProgressBar({ currentStageId, compact, oppId }: StageProgressBarProps) {
+  const currentStage = getStageById(currentStageId);
+  const activeStages = salesStages.filter(s => !s.isTerminal);
+  const terminalStage = salesStages.find(s => s.id === currentStageId && s.isTerminal);
+
+  const bar = (
+    <div className="flex items-center gap-1 w-full">
+      {activeStages.map(stage => {
+        const isCurrent = stage.id === currentStageId;
+        const isPast =
+          currentStage &&
+          !currentStage.isTerminal &&
+          stage.stageOrder < currentStage.stageOrder;
+        const isCompleted = terminalStage?.name === 'Closed Won' || isPast;
+
+        return (
+          <div key={stage.id} className="flex-1 group relative">
+            <div
+              className={`${compact ? 'h-1.5' : 'h-2'} rounded-full transition-colors ${
+                isCurrent
+                  ? 'bg-violet-500'
+                  : isCompleted
+                    ? 'bg-violet-300'
+                    : 'bg-gray-200'
+              }`}
+            />
+            {!compact && (
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+                {stage.name}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {terminalStage && (
+        <span
+          className={`text-[10px] font-medium ml-1 shrink-0 ${
+            terminalStage.name === 'Closed Won' ? 'text-green-600' : 'text-red-500'
+          }`}
+        >
+          {terminalStage.name}
+        </span>
+      )}
+    </div>
+  );
+
+  if (oppId) {
+    return (
+      <Link to={`/opportunities/${oppId}`} className="block hover:opacity-80 transition-opacity">
+        {bar}
+      </Link>
+    );
+  }
+
+  return bar;
+}

@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { contacts, getCompanyById, timeAgo } from '../data/mockData';
+import { timeAgo } from '../data/mockData';
+import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
+import AddContactModal from '../components/AddContactModal';
 import { Search, Plus, ArrowUpDown, Filter, SlidersHorizontal } from 'lucide-react';
 
 export default function Contacts() {
+  const { contacts, companies } = useData();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [showAdd, setShowAdd] = useState(false);
 
   const filtered = contacts.filter(c => {
     const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-    const company = getCompanyById(c.companyId);
-    const matchesSearch = fullName.includes(search.toLowerCase()) ||
+    const company = companies.find(cm => cm.id === c.companyId);
+    const matchesSearch =
+      fullName.includes(search.toLowerCase()) ||
       (company?.name.toLowerCase().includes(search.toLowerCase()) ?? false) ||
       c.email.toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === 'all' || c.contactType === typeFilter;
@@ -45,7 +50,10 @@ export default function Contacts() {
               className="pl-7 pr-3 py-1.5 border border-gray-200 rounded-md text-[12px] w-48 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400"
             />
           </div>
-          <button className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors"
+          >
             <Plus className="w-3.5 h-3.5" />
             New Person
           </button>
@@ -57,9 +65,33 @@ export default function Contacts() {
         <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
           <ArrowUpDown className="w-3 h-3" /> Sort
         </button>
-        <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
-          <Filter className="w-3 h-3" /> Filter
-        </button>
+        <div className="relative group">
+          <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
+            <Filter className="w-3 h-3" /> Filter
+          </button>
+          <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-20 hidden group-hover:block py-1 min-w-[140px]">
+            {['all', 'Lead', 'Customer', 'Other'].map(t => (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`block w-full text-left px-3 py-1.5 text-[12px] hover:bg-gray-50 ${typeFilter === t ? 'text-violet-600 font-medium' : 'text-gray-600'}`}
+              >
+                {t === 'all' ? 'All types' : t}
+              </button>
+            ))}
+          </div>
+        </div>
+        {typeFilter !== 'all' && (
+          <span className="text-[11px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
+            Type: {typeFilter}
+            <button
+              onClick={() => setTypeFilter('all')}
+              className="ml-1 text-violet-400 hover:text-violet-700"
+            >
+              &times;
+            </button>
+          </span>
+        )}
       </div>
 
       {/* Table */}
@@ -78,24 +110,37 @@ export default function Contacts() {
           </thead>
           <tbody>
             {filtered.map(contact => {
-              const company = getCompanyById(contact.companyId);
-              const lastActivityMs = contact.lastActivityAt ? Date.now() - new Date(contact.lastActivityAt).getTime() : Infinity;
+              const company = companies.find(c => c.id === contact.companyId);
+              const lastActivityMs = contact.lastActivityAt
+                ? Date.now() - new Date(contact.lastActivityAt).getTime()
+                : Infinity;
               const isStale = lastActivityMs > 7 * 86400000;
 
               let connectionStr = 'Very weak';
               let connectionDot = 'bg-red-400';
-              if (contact.contactType === 'Customer') { connectionStr = 'Strong'; connectionDot = 'bg-blue-500'; }
-              else if (!isStale) { connectionStr = 'Moderate'; connectionDot = 'bg-amber-400'; }
+              if (contact.contactType === 'Customer') {
+                connectionStr = 'Strong';
+                connectionDot = 'bg-blue-500';
+              } else if (!isStale) {
+                connectionStr = 'Moderate';
+                connectionDot = 'bg-amber-400';
+              }
 
               return (
                 <tr key={contact.id} className="border-b border-gray-100 group">
                   <td className="px-4 py-2.5">
-                    <Link to={`/contacts/${contact.id}`} className="text-gray-900 hover:text-violet-600 font-medium">
+                    <Link
+                      to={`/contacts/${contact.id}`}
+                      className="text-gray-900 hover:text-violet-600 font-medium"
+                    >
                       {contact.firstName} {contact.lastName}
                     </Link>
                   </td>
                   <td className="px-4 py-2.5">
-                    <Link to={`/companies/${contact.companyId}`} className="text-violet-600 hover:underline text-[12px]">
+                    <Link
+                      to={`/companies/${contact.companyId}`}
+                      className="text-violet-600 hover:underline text-[12px]"
+                    >
                       {company?.name}
                     </Link>
                   </td>
@@ -107,7 +152,9 @@ export default function Contacts() {
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.email}</td>
                   <td className="px-4 py-2.5 text-gray-600 text-[12px]">{contact.title}</td>
-                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{timeAgo(contact.lastActivityAt)}</td>
+                  <td className={`px-4 py-2.5 text-[12px] ${isStale ? 'text-red-500' : 'text-gray-500'}`}>
+                    {timeAgo(contact.lastActivityAt)}
+                  </td>
                   <td className="px-4 py-2.5">
                     <span className="flex items-center gap-1.5">
                       <span className={`w-[6px] h-[6px] rounded-full ${connectionDot}`} />
@@ -125,6 +172,8 @@ export default function Contacts() {
       <div className="border-t border-gray-200 px-5 py-2 bg-white text-[12px] text-gray-400 shrink-0">
         {filtered.length} count
       </div>
+
+      <AddContactModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
     </div>
   );
 }

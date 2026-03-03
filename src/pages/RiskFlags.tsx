@@ -1,29 +1,31 @@
 import { Link } from 'react-router-dom';
-import {
-  inactivityFlags, getContactById, getCompanyById, getOpportunityById,
-  formatDateTime, getStageById,
-} from '../data/mockData';
+import { formatDateTime, getStageById } from '../data/mockData';
+import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
-import { Filter, ArrowUpDown } from 'lucide-react';
+import { Filter, ArrowUpDown, CheckCircle2 } from 'lucide-react';
 
 export default function RiskFlags() {
+  const { inactivityFlags, contacts, opportunities, companies, resolveFlag } = useData();
+
   const openFlags = inactivityFlags.filter(f => !f.resolvedAt);
   const resolvedFlags = inactivityFlags.filter(f => f.resolvedAt);
 
-  function getRelatedName(f: typeof inactivityFlags[0]) {
+  function getRelatedName(f: (typeof inactivityFlags)[0]) {
     if (f.relatedObjectType === 'Contact') {
-      const contact = getContactById(f.relatedObjectId);
+      const contact = contacts.find(c => c.id === f.relatedObjectId);
       return contact ? `${contact.firstName} ${contact.lastName}` : 'Unknown';
     } else {
-      const opp = getOpportunityById(f.relatedObjectId);
-      const company = opp ? getCompanyById(opp.companyId) : null;
+      const opp = opportunities.find(o => o.id === f.relatedObjectId);
+      const company = opp ? companies.find(c => c.id === opp.companyId) : null;
       const stage = opp ? getStageById(opp.stageId) : null;
       return company ? `${company.name} — ${stage?.name}` : 'Unknown';
     }
   }
 
-  function getRelatedLink(f: typeof inactivityFlags[0]) {
-    return f.relatedObjectType === 'Contact' ? `/contacts/${f.relatedObjectId}` : `/opportunities/${f.relatedObjectId}`;
+  function getRelatedLink(f: (typeof inactivityFlags)[0]) {
+    return f.relatedObjectType === 'Contact'
+      ? `/contacts/${f.relatedObjectId}`
+      : `/opportunities/${f.relatedObjectId}`;
   }
 
   return (
@@ -32,7 +34,9 @@ export default function RiskFlags() {
       <div className="flex items-center justify-between px-5 py-2 border-b border-gray-200 bg-white shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-[13px] font-medium text-gray-900">Risk Flags</span>
-          <span className="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">{openFlags.length} open</span>
+          <span className="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
+            {openFlags.length} open
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
@@ -55,13 +59,20 @@ export default function RiskFlags() {
               <th className="text-left font-medium text-gray-500 px-4 py-2">Flagged at</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2">Status</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2">Resolved by</th>
+              <th className="text-center font-medium text-gray-500 px-4 py-2">Action</th>
             </tr>
           </thead>
           <tbody>
             {[...openFlags, ...resolvedFlags].map(flag => (
-              <tr key={flag.id} className={`border-b border-gray-100 ${!flag.resolvedAt ? 'bg-red-50/30' : ''}`}>
+              <tr
+                key={flag.id}
+                className={`border-b border-gray-100 ${!flag.resolvedAt ? 'bg-red-50/30' : ''}`}
+              >
                 <td className="px-4 py-2.5">
-                  <Link to={getRelatedLink(flag)} className="text-gray-900 hover:text-violet-600 font-medium">
+                  <Link
+                    to={getRelatedLink(flag)}
+                    className="text-gray-900 hover:text-violet-600 font-medium"
+                  >
                     {getRelatedName(flag)}
                   </Link>
                 </td>
@@ -69,11 +80,19 @@ export default function RiskFlags() {
                   <StatusBadge status={flag.relatedObjectType} variant="tag" />
                 </td>
                 <td className="px-4 py-2.5">
-                  <span className={`text-[11px] font-medium px-1.5 py-[1px] rounded ${!flag.resolvedAt ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span
+                    className={`text-[11px] font-medium px-1.5 py-[1px] rounded ${
+                      !flag.resolvedAt
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
                     {flag.flagType}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-gray-500 text-[12px]">{formatDateTime(flag.flaggedAt)}</td>
+                <td className="px-4 py-2.5 text-gray-500 text-[12px]">
+                  {formatDateTime(flag.flaggedAt)}
+                </td>
                 <td className="px-4 py-2.5">
                   {flag.resolvedAt ? (
                     <span className="flex items-center gap-1.5">
@@ -87,7 +106,20 @@ export default function RiskFlags() {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-gray-500 text-[12px]">{flag.resolvedBy || '—'}</td>
+                <td className="px-4 py-2.5 text-gray-500 text-[12px]">
+                  {flag.resolvedBy || '—'}
+                </td>
+                <td className="px-4 py-2.5 text-center">
+                  {!flag.resolvedAt && (
+                    <button
+                      onClick={() => resolveFlag(flag.id)}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-md transition-colors"
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      Resolve
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

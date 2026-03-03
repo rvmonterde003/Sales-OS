@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  companies, getContactsByCompany, getOpenOpportunitiesByCompany, getCompanyContactActivities,
-  timeAgo,
-} from '../data/mockData';
+import { timeAgo } from '../data/mockData';
+import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
+import AddCompanyModal from '../components/AddCompanyModal';
 import { Search, Plus, ArrowUpDown, Filter, SlidersHorizontal } from 'lucide-react';
 
 export default function Companies() {
+  const { companies, contacts, opportunities, activities } = useData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showAdd, setShowAdd] = useState(false);
 
   const filtered = companies.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchesSearch =
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.industry.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -45,7 +47,10 @@ export default function Companies() {
               className="pl-7 pr-3 py-1.5 border border-gray-200 rounded-md text-[12px] w-48 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400"
             />
           </div>
-          <button className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors"
+          >
             <Plus className="w-3.5 h-3.5" />
             New Company
           </button>
@@ -57,13 +62,31 @@ export default function Companies() {
         <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
           <ArrowUpDown className="w-3 h-3" /> Sort
         </button>
-        <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
-          <Filter className="w-3 h-3" /> Filter
-        </button>
+        <div className="relative group">
+          <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
+            <Filter className="w-3 h-3" /> Filter
+          </button>
+          <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-20 hidden group-hover:block py-1 min-w-[140px]">
+            {['all', 'Prospect', 'Customer', 'Former'].map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`block w-full text-left px-3 py-1.5 text-[12px] hover:bg-gray-50 ${statusFilter === s ? 'text-violet-600 font-medium' : 'text-gray-600'}`}
+              >
+                {s === 'all' ? 'All statuses' : s}
+              </button>
+            ))}
+          </div>
+        </div>
         {statusFilter !== 'all' && (
           <span className="text-[11px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
             Status: {statusFilter}
-            <button onClick={() => setStatusFilter('all')} className="ml-1 text-violet-400 hover:text-violet-700">&times;</button>
+            <button
+              onClick={() => setStatusFilter('all')}
+              className="ml-1 text-violet-400 hover:text-violet-700"
+            >
+              &times;
+            </button>
           </span>
         )}
       </div>
@@ -85,23 +108,45 @@ export default function Companies() {
           </thead>
           <tbody>
             {filtered.map(company => {
-              const companyContacts = getContactsByCompany(company.id);
-              const openDeals = getOpenOpportunitiesByCompany(company.id);
-              const companyActivities = getCompanyContactActivities(company.id);
-              const lastActivity = companyActivities.length > 0 ? companyActivities[0].timestamp : null;
-              const lastMs = lastActivity ? Date.now() - new Date(lastActivity).getTime() : Infinity;
-              const isStale = lastMs > 7 * 86400000;
+              const companyContacts = contacts.filter(c => c.companyId === company.id);
+              const openDeals = opportunities.filter(
+                o => o.companyId === company.id && !o.closedAt,
+              );
+              const contactIds = companyContacts.map(c => c.id);
+              const companyActivities = activities
+                .filter(
+                  a =>
+                    (a.relatedObjectType === 'Contact' && contactIds.includes(a.relatedObjectId)) ||
+                    (a.relatedObjectType === 'Opportunity' &&
+                      opportunities
+                        .filter(o => o.companyId === company.id)
+                        .map(o => o.id)
+                        .includes(a.relatedObjectId)),
+                )
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+              const lastActivity =
+                companyActivities.length > 0 ? companyActivities[0].timestamp : null;
+              const lastMs = lastActivity
+                ? Date.now() - new Date(lastActivity).getTime()
+                : Infinity;
 
-              // Connection strength
               let connectionStr = 'Very weak';
               let connectionDot = 'bg-red-400';
-              if (company.status === 'Customer') { connectionStr = 'Strong'; connectionDot = 'bg-blue-500'; }
-              else if (openDeals.length > 0) { connectionStr = 'Moderate'; connectionDot = 'bg-amber-400'; }
+              if (company.status === 'Customer') {
+                connectionStr = 'Strong';
+                connectionDot = 'bg-blue-500';
+              } else if (openDeals.length > 0) {
+                connectionStr = 'Moderate';
+                connectionDot = 'bg-amber-400';
+              }
 
               return (
                 <tr key={company.id} className="border-b border-gray-100 group">
                   <td className="px-4 py-2.5">
-                    <Link to={`/companies/${company.id}`} className="text-gray-900 hover:text-violet-600 font-medium">
+                    <Link
+                      to={`/companies/${company.id}`}
+                      className="text-gray-900 hover:text-violet-600 font-medium"
+                    >
                       {company.name}
                     </Link>
                   </td>
@@ -124,8 +169,12 @@ export default function Companies() {
                       <span className="text-[12px] text-gray-600">{connectionStr}</span>
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-center text-gray-600">{companyContacts.length || ''}</td>
-                  <td className="px-4 py-2.5 text-center text-gray-600">{openDeals.length || ''}</td>
+                  <td className="px-4 py-2.5 text-center text-gray-600">
+                    {companyContacts.length || ''}
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-gray-600">
+                    {openDeals.length || ''}
+                  </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{company.owner}</td>
                 </tr>
               );
@@ -138,6 +187,8 @@ export default function Companies() {
       <div className="border-t border-gray-200 px-5 py-2 bg-white text-[12px] text-gray-400 shrink-0">
         {filtered.length} count
       </div>
+
+      <AddCompanyModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
     </div>
   );
 }
