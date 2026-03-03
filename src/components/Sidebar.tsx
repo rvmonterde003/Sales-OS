@@ -1,6 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Kanban,
   Building2,
   Users,
@@ -10,11 +9,8 @@ import {
   Search,
   Command,
   ChevronDown,
-  ChevronRight,
-  Star,
   BarChart3,
 } from 'lucide-react';
-import { useState } from 'react';
 
 const recordItems = [
   { to: '/companies', icon: Building2, label: 'Companies', color: 'bg-purple-500' },
@@ -23,7 +19,6 @@ const recordItems = [
 ];
 
 export default function Sidebar() {
-  const [reportsOpen, setReportsOpen] = useState(true);
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -59,35 +54,8 @@ export default function Sidebar() {
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {/* Top nav items */}
         <div className="space-y-0.5 pb-3">
-          <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} end />
+          <SidebarLink to="/" icon={BarChart3} label="Business Metrics" active={isActive('/')} end />
           <SidebarLink to="/risk-flags" icon={AlertTriangle} label="Notifications" active={isActive('/risk-flags')} />
-        </div>
-
-        {/* Reports section */}
-        <div className="pb-3">
-          <button
-            onClick={() => setReportsOpen(!reportsOpen)}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider w-full hover:text-gray-600"
-          >
-            {reportsOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            Reports
-          </button>
-          {reportsOpen && (
-            <div className="mt-0.5 space-y-0.5">
-              <SidebarLink to="/" icon={BarChart3} label="Business Metrics" active={isActive('/')} end />
-            </div>
-          )}
-        </div>
-
-        {/* Favorites */}
-        <div className="pb-3">
-          <div className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
-            <ChevronDown className="w-3 h-3" />
-            Favorites
-          </div>
-          <div className="mt-0.5 space-y-0.5">
-            <SidebarLink to="/pipeline" icon={Star} label="Sales Pipeline" active={isActive('/pipeline')} iconColor="text-amber-500" />
-          </div>
         </div>
 
         {/* Records */}
@@ -114,16 +82,6 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Lists */}
-        <div className="pb-3">
-          <div className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
-            <ChevronDown className="w-3 h-3" />
-            Lists
-          </div>
-          <div className="mt-0.5 space-y-0.5">
-            <SidebarLink to="/risk-flags" icon={AlertTriangle} label="At-risk deals" active={isActive('/risk-flags')} iconColor="text-red-500" />
-          </div>
-        </div>
       </div>
 
       {/* Footer */}

@@ -53,13 +53,13 @@ export default function Dashboard() {
     { label: 'Won', pct: `${((wins.length / Math.max(totalLeads, 1)) * 100).toFixed(1)}%`, count: wins.length },
   ];
 
-  // Owner breakdown for bar chart by month
+  // Revenue by month
   const ownerData = [
-    { month: 'Oct', Nick: 45000, Sarah: 30000 },
-    { month: 'Nov', Nick: 62000, Sarah: 48000 },
-    { month: 'Dec', Nick: 55000, Sarah: 72000 },
-    { month: 'Jan', Nick: 78000, Sarah: 60000 },
-    { month: 'Feb', Nick: 84000, Sarah: 54000 },
+    { month: 'Oct', Nick: 45000 },
+    { month: 'Nov', Nick: 62000 },
+    { month: 'Dec', Nick: 55000 },
+    { month: 'Jan', Nick: 78000 },
+    { month: 'Feb', Nick: 84000 },
   ];
 
   return (
@@ -76,13 +76,12 @@ export default function Dashboard() {
         <div className="col-span-3 border border-gray-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <h3 className="text-[13px] font-semibold text-gray-900">Revenue by owner</h3>
+              <h3 className="text-[13px] font-semibold text-gray-900">Revenue</h3>
               <span className="text-[11px] bg-orange-100 text-orange-700 px-1.5 py-[1px] rounded-full font-medium">Deals</span>
             </div>
           </div>
           <div className="flex items-center gap-4 mb-3">
             <LegendDot color="#818cf8" label="Nick Kringas" />
-            <LegendDot color="#f472b6" label="Sarah Chen" />
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={ownerData} barGap={2}>
@@ -91,7 +90,6 @@ export default function Dashboard() {
               <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `$ ${(v / 1000).toFixed(0)}K`} />
               <Tooltip contentStyle={{ fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }} formatter={(v: number) => formatCurrency(v)} />
               <Bar dataKey="Nick" fill="#818cf8" radius={[3, 3, 0, 0]} maxBarSize={28} />
-              <Bar dataKey="Sarah" fill="#f472b6" radius={[3, 3, 0, 0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
         </div>
