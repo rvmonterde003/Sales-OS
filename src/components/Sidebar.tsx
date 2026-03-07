@@ -13,7 +13,7 @@ import {
 
 const recordItems = [
   { to: '/companies', icon: Building2, label: 'Companies', color: 'bg-purple-500' },
-  { to: '/contacts', icon: Users, label: 'People', color: 'bg-green-500' },
+  { to: '/contacts', icon: Users, label: 'Contacts', color: 'bg-green-500' },
   { to: '/pipeline', icon: Kanban, label: 'Deals', color: 'bg-orange-400' },
 ];
 
