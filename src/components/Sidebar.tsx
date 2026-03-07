@@ -6,10 +6,9 @@ import {
   AlertTriangle,
   Settings,
   Scale,
-  Search,
-  Command,
   ChevronDown,
   BarChart3,
+  MessageSquare,
 } from 'lucide-react';
 
 const recordItems = [
@@ -34,20 +33,9 @@ export default function Sidebar() {
           <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
             <Scale className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
           </div>
-          <span className="text-[13px] font-semibold text-gray-900">LawShift</span>
+          <span className="text-[13px] font-semibold text-gray-900">Sales OS</span>
           <ChevronDown className="w-3 h-3 text-gray-400 ml-auto" />
         </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="px-3 pt-1 pb-2">
-        <button className="flex items-center gap-2 w-full px-2 py-1.5 text-[13px] text-gray-500 hover:bg-gray-100 rounded-md transition-colors">
-          <Search className="w-3.5 h-3.5" />
-          <span>Quick actions</span>
-          <span className="ml-auto flex items-center gap-0.5 text-[11px] text-gray-400">
-            <Command className="w-3 h-3" />K
-          </span>
-        </button>
       </div>
 
       {/* Main nav scroll area */}
@@ -55,7 +43,8 @@ export default function Sidebar() {
         {/* Top nav items */}
         <div className="space-y-0.5 pb-3">
           <SidebarLink to="/" icon={BarChart3} label="Business Metrics" active={isActive('/')} end />
-          <SidebarLink to="/risk-flags" icon={AlertTriangle} label="Notifications" active={isActive('/risk-flags')} />
+          <SidebarLink to="/activities" icon={MessageSquare} label="Activities" active={isActive('/activities')} />
+          <SidebarLink to="/risk-flags" icon={AlertTriangle} label="Risk Flags" active={isActive('/risk-flags')} />
         </div>
 
         {/* Records */}
@@ -81,7 +70,6 @@ export default function Sidebar() {
             ))}
           </div>
         </div>
-
       </div>
 
       {/* Footer */}
@@ -101,9 +89,9 @@ export default function Sidebar() {
 }
 
 function SidebarLink({
-  to, icon: Icon, label, active, end, iconColor,
+  to, icon: Icon, label, active, end,
 }: {
-  to: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; label: string; active: boolean; end?: boolean; iconColor?: string;
+  to: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; label: string; active: boolean; end?: boolean;
 }) {
   return (
     <NavLink
@@ -113,7 +101,7 @@ function SidebarLink({
         active ? 'active font-medium' : 'text-gray-700'
       }`}
     >
-      <Icon className={`w-3.5 h-3.5 ${iconColor || (active ? 'text-violet-600' : 'text-gray-400')}`} strokeWidth={active ? 2 : 1.5} />
+      <Icon className={`w-3.5 h-3.5 ${active ? 'text-violet-600' : 'text-gray-400'}`} strokeWidth={active ? 2 : 1.5} />
       {label}
     </NavLink>
   );

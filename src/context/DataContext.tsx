@@ -1,39 +1,40 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import {
-  companies as initCompanies,
-  contacts as initContacts,
-  opportunities as initOpportunities,
-  activities as initActivities,
-  stageTransitions as initTransitions,
-  qualificationChecks as initQualChecks,
-  inactivityFlags as initFlags,
-  salesStages,
-  type Company,
-  type Contact,
-  type Opportunity,
-  type Activity,
-  type StageTransition,
-  type QualificationCheck,
-  type InactivityFlag,
-} from '../data/mockData';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
+import type {
+  DbCompany, DbContact, DbOpportunity, DbActivity,
+  DbStageTransition, DbQualificationCheck, DbInactivityFlag,
+  DbSalesStage, DbLossReason,
+} from '../types/database';
 
 interface DataContextType {
-  companies: Company[];
-  contacts: Contact[];
-  opportunities: Opportunity[];
-  activities: Activity[];
-  stageTransitions: StageTransition[];
-  qualificationChecks: QualificationCheck[];
-  inactivityFlags: InactivityFlag[];
-  addCompany: (c: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  addContact: (c: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  addActivity: (a: Omit<Activity, 'id'>) => void;
-  advanceStage: (oppId: string, notes: string) => boolean;
-  moveToStage: (oppId: string, targetStageId: number, notes: string) => boolean;
-  closeOpportunity: (oppId: string, won: boolean, reason?: string, notes?: string) => void;
-  resolveFlag: (flagId: string) => void;
-  toggleQualification: (contactId: string, field: 'budget' | 'authority' | 'need' | 'timing') => void;
-  updateOpportunity: (oppId: string, fields: Partial<Opportunity>) => void;
+  // Data
+  companies: DbCompany[];
+  contacts: DbContact[];
+  opportunities: DbOpportunity[];
+  activities: DbActivity[];
+  stageTransitions: DbStageTransition[];
+  qualificationChecks: DbQualificationCheck[];
+  inactivityFlags: DbInactivityFlag[];
+  salesStages: DbSalesStage[];
+  lossReasons: DbLossReason[];
+  loading: boolean;
+
+  // Lookups
+  getStageById: (id: number) => DbSalesStage | undefined;
+  getUserName: (userId: number) => string;
+
+  // Mutations
+  addCompany: (c: { name: string; industry?: string; firm_size?: string; website?: string; }) => Promise<DbCompany | null>;
+  addContact: (c: { company_id: number; first_name: string; last_name: string; email?: string; phone?: string; title?: string; role?: string; }) => Promise<DbContact | null>;
+  addActivity: (a: { company_id: number; related_opportunity_id?: number | null; activity_type: string; notes?: string; activity_timestamp?: string; }) => Promise<void>;
+  addOpportunity: (o: { company_id: number; opportunity_type: string; service_description: string; deal_value: number; source: string; expected_close_date: string; primary_contact_id?: number | null; notes?: string; }) => Promise<DbOpportunity | null>;
+  updateOpportunity: (id: number, fields: Partial<DbOpportunity>) => Promise<void>;
+  moveToStage: (oppId: number, targetStageId: number, notes?: string) => Promise<boolean>;
+  closeOpportunity: (oppId: number, won: boolean, reasonId?: number, notes?: string) => Promise<void>;
+  toggleQualification: (companyId: number, field: 'budget' | 'authority' | 'need' | 'timing') => Promise<void>;
+  resolveFlag: (flagId: number) => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -44,220 +45,301 @@ export function useData() {
   return ctx;
 }
 
-let nextId = 100;
-function genId(prefix: string) {
-  return `${prefix}-${nextId++}`;
-}
-
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [companies, setCompanies] = useState<Company[]>([...initCompanies]);
-  const [contacts, setContacts] = useState<Contact[]>([...initContacts]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([...initOpportunities]);
-  const [activities, setActivities] = useState<Activity[]>([...initActivities]);
-  const [stageTransitions, setTransitions] = useState<StageTransition[]>([...initTransitions]);
-  const [qualificationChecks, setQualChecks] = useState<QualificationCheck[]>([...initQualChecks]);
-  const [inactivityFlags, setFlags] = useState<InactivityFlag[]>([...initFlags]);
+  const { dbUser, allUsers } = useAuth();
 
-  const now = () => new Date().toISOString();
+  const [companies, setCompanies] = useState<DbCompany[]>([]);
+  const [contacts, setContacts] = useState<DbContact[]>([]);
+  const [opportunities, setOpportunities] = useState<DbOpportunity[]>([]);
+  const [activities, setActivities] = useState<DbActivity[]>([]);
+  const [stageTransitions, setStageTransitions] = useState<DbStageTransition[]>([]);
+  const [qualificationChecks, setQualificationChecks] = useState<DbQualificationCheck[]>([]);
+  const [inactivityFlags, setInactivityFlags] = useState<DbInactivityFlag[]>([]);
+  const [salesStages, setSalesStages] = useState<DbSalesStage[]>([]);
+  const [lossReasons, setLossReasons] = useState<DbLossReason[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addCompany = useCallback((c: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const ts = now();
-    setCompanies(prev => [...prev, { ...c, id: genId('comp'), createdAt: ts, updatedAt: ts }]);
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    const [
+      { data: co }, { data: ct }, { data: op }, { data: ac },
+      { data: st }, { data: qc }, { data: fl }, { data: ss }, { data: lr },
+    ] = await Promise.all([
+      supabase.from('companies').select('*').order('name'),
+      supabase.from('contacts').select('*').order('last_name'),
+      supabase.from('opportunities').select('*').order('created_at', { ascending: false }),
+      supabase.from('activities').select('*').order('activity_timestamp', { ascending: false }),
+      supabase.from('stage_transitions').select('*').order('created_at', { ascending: false }),
+      supabase.from('qualification_checks').select('*'),
+      supabase.from('inactivity_flags').select('*').order('flagged_at', { ascending: false }),
+      supabase.from('sales_stages').select('*').order('stage_order'),
+      supabase.from('loss_reasons').select('*').eq('is_active', true).order('reason'),
+    ]);
+    setCompanies(co ?? []);
+    setContacts(ct ?? []);
+    setOpportunities(op ?? []);
+    setActivities(ac ?? []);
+    setStageTransitions(st ?? []);
+    setQualificationChecks(qc ?? []);
+    setInactivityFlags(fl ?? []);
+    setSalesStages(ss ?? []);
+    setLossReasons(lr ?? []);
+    setLoading(false);
   }, []);
 
-  const addContact = useCallback((c: Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const ts = now();
-    setContacts(prev => [...prev, { ...c, id: genId('cont'), createdAt: ts, updatedAt: ts }]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const getStageById = useCallback(
+    (id: number) => salesStages.find(s => s.id === id),
+    [salesStages],
+  );
+
+  const getUserName = useCallback(
+    (userId: number) => {
+      const u = allUsers.find(u => u.id === userId);
+      return u ? `${u.first_name} ${u.last_name}` : 'Unknown';
+    },
+    [allUsers],
+  );
+
+  const addCompany = useCallback(async (c: {
+    name: string; industry?: string; firm_size?: string; website?: string;
+  }) => {
+    if (!dbUser) return null;
+    const { data, error } = await supabase.from('companies').insert({
+      name: c.name,
+      industry: c.industry || null,
+      firm_size: c.firm_size || null,
+      website: c.website || null,
+      status: 'Prospect',
+      lead_status: 'Lead',
+      owner_id: dbUser.id,
+    }).select().single();
+    if (!error && data) {
+      setCompanies(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      // Create empty qualification check
+      await supabase.from('qualification_checks').insert({
+        company_id: data.id,
+        budget: false,
+        authority: false,
+        need: false,
+        timing: false,
+      });
+      const { data: qcData } = await supabase.from('qualification_checks').select('*').eq('company_id', data.id).single();
+      if (qcData) setQualificationChecks(prev => [...prev, qcData]);
+    }
+    return data ?? null;
+  }, [dbUser]);
+
+  const addContact = useCallback(async (c: {
+    company_id: number; first_name: string; last_name: string;
+    email?: string; phone?: string; title?: string; role?: string;
+  }) => {
+    const { data, error } = await supabase.from('contacts').insert({
+      company_id: c.company_id,
+      first_name: c.first_name,
+      last_name: c.last_name,
+      email: c.email || null,
+      phone: c.phone || null,
+      title: c.title || null,
+      role: c.role || null,
+    }).select().single();
+    if (!error && data) {
+      setContacts(prev => [...prev, data]);
+    }
+    return data ?? null;
   }, []);
 
-  const addActivity = useCallback((a: Omit<Activity, 'id'>) => {
-    setActivities(prev => [...prev, { ...a, id: genId('act') }]);
-    if (a.relatedObjectType === 'Contact') {
-      setContacts(prev =>
-        prev.map(c =>
-          c.id === a.relatedObjectId
-            ? { ...c, lastActivityAt: a.timestamp, updatedAt: now() }
-            : c,
-        ),
-      );
+  const addActivity = useCallback(async (a: {
+    company_id: number;
+    related_opportunity_id?: number | null;
+    activity_type: string;
+    notes?: string;
+    activity_timestamp?: string;
+  }) => {
+    if (!dbUser) return;
+    const { data, error } = await supabase.from('activities').insert({
+      company_id: a.company_id,
+      related_opportunity_id: a.related_opportunity_id ?? null,
+      activity_type: a.activity_type as DbActivity['activity_type'],
+      notes: a.notes || null,
+      logged_by: dbUser.id,
+      activity_timestamp: a.activity_timestamp || new Date().toISOString(),
+    }).select().single();
+    if (!error && data) {
+      setActivities(prev => [data, ...prev]);
+      // Update company last_activity_at locally (trigger does it in DB)
+      setCompanies(prev => prev.map(c =>
+        c.id === a.company_id ? { ...c, last_activity_at: data.activity_timestamp, updated_at: new Date().toISOString() } : c
+      ));
+    }
+  }, [dbUser]);
+
+  const addOpportunity = useCallback(async (o: {
+    company_id: number; opportunity_type: string; service_description: string;
+    deal_value: number; source: string; expected_close_date: string;
+    primary_contact_id?: number | null; notes?: string;
+  }) => {
+    if (!dbUser) return null;
+    // Find the first deal stage (Opportunity)
+    const firstStage = salesStages.find(s => s.stage_order === 1);
+    if (!firstStage) return null;
+    const { data, error } = await supabase.from('opportunities').insert({
+      company_id: o.company_id,
+      opportunity_type: o.opportunity_type as DbOpportunity['opportunity_type'],
+      service_description: o.service_description,
+      deal_value: o.deal_value,
+      source: o.source,
+      stage_id: firstStage.id,
+      expected_close_date: o.expected_close_date,
+      primary_contact_id: o.primary_contact_id ?? null,
+      owner_id: dbUser.id,
+    }).select().single();
+    if (!error && data) {
+      setOpportunities(prev => [data, ...prev]);
+      // Log initial stage transition
+      const { data: tr } = await supabase.from('stage_transitions').insert({
+        opportunity_id: data.id,
+        from_stage_id: null,
+        to_stage_id: firstStage.id,
+        transitioned_by: dbUser.id,
+        notes: 'Opportunity created.',
+      }).select().single();
+      if (tr) setStageTransitions(prev => [tr, ...prev]);
+      // Update company lead_status
+      await supabase.from('companies').update({ lead_status: 'Qualified' }).eq('id', o.company_id);
+      setCompanies(prev => prev.map(c => c.id === o.company_id ? { ...c, lead_status: 'Qualified' } : c));
+    }
+    return data ?? null;
+  }, [dbUser, salesStages]);
+
+  const updateOpportunity = useCallback(async (id: number, fields: Partial<DbOpportunity>) => {
+    const { data, error } = await supabase.from('opportunities').update(fields).eq('id', id).select().single();
+    if (!error && data) {
+      setOpportunities(prev => prev.map(o => o.id === id ? data : o));
     }
   }, []);
 
-  const advanceStage = useCallback(
-    (oppId: string, notes: string): boolean => {
-      let advanced = false;
-      setOpportunities(prev =>
-        prev.map(opp => {
-          if (opp.id !== oppId) return opp;
-          const cur = salesStages.find(s => s.id === opp.stageId);
-          if (!cur || cur.isTerminal) return opp;
-          const next = salesStages.find(
-            s => s.stageOrder === cur.stageOrder + 1 && !s.isTerminal,
-          );
-          if (!next) return opp;
-          const ts = now();
-          setTransitions(p => [
-            ...p,
-            {
-              id: genId('st'),
-              opportunityId: oppId,
-              fromStageId: opp.stageId,
-              toStageId: next.id,
-              transitionedBy: 'Nick Kringas',
-              transitionedAt: ts,
-              notes,
-            },
-          ]);
-          advanced = true;
-          return { ...opp, stageId: next.id, stageEnteredAt: ts, updatedAt: ts };
-        }),
-      );
-      return advanced;
-    },
-    [],
-  );
+  const moveToStage = useCallback(async (oppId: number, targetStageId: number, notes?: string): Promise<boolean> => {
+    if (!dbUser) return false;
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp || opp.stage_id === targetStageId) return false;
 
-  const moveToStage = useCallback(
-    (oppId: string, targetStageId: number, notes: string): boolean => {
-      const target = salesStages.find(s => s.id === targetStageId);
-      if (!target || target.isTerminal) return false;
-      let moved = false;
-      setOpportunities(prev =>
-        prev.map(opp => {
-          if (opp.id !== oppId) return opp;
-          if (opp.stageId === targetStageId) return opp;
-          const ts = now();
-          setTransitions(p => [
-            ...p,
-            {
-              id: genId('st'),
-              opportunityId: oppId,
-              fromStageId: opp.stageId,
-              toStageId: targetStageId,
-              transitionedBy: 'Nick Kringas',
-              transitionedAt: ts,
-              notes,
-            },
-          ]);
-          moved = true;
-          return { ...opp, stageId: targetStageId, stageEnteredAt: ts, updatedAt: ts };
-        }),
-      );
-      return moved;
-    },
-    [],
-  );
+    const { error } = await supabase.from('opportunities').update({
+      stage_id: targetStageId,
+      updated_at: new Date().toISOString(),
+    }).eq('id', oppId);
+    if (error) return false;
 
-  const closeOpportunity = useCallback(
-    (oppId: string, won: boolean, reason?: string, notes?: string) => {
-      const target = salesStages.find(
-        s => s.name === (won ? 'Closed Won' : 'Closed Lost'),
-      );
-      if (!target) return;
-      setOpportunities(prev =>
-        prev.map(opp => {
-          if (opp.id !== oppId) return opp;
-          const ts = now();
-          setTransitions(p => [
-            ...p,
-            {
-              id: genId('st'),
-              opportunityId: oppId,
-              fromStageId: opp.stageId,
-              toStageId: target.id,
-              transitionedBy: 'Nick Kringas',
-              transitionedAt: ts,
-              notes:
-                notes || (won ? 'Deal closed won.' : `Deal closed lost: ${reason}`),
-            },
-          ]);
-          return {
-            ...opp,
-            stageId: target.id,
-            stageEnteredAt: ts,
-            updatedAt: ts,
-            closedAt: ts,
-            closedReason: won ? null : reason || null,
-            closedNotes: notes || null,
-            contractStartDate: won ? ts.split('T')[0] : null,
-            contractEndDate: won
-              ? new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
-              : null,
-          };
-        }),
-      );
-    },
-    [],
-  );
+    const { data: tr } = await supabase.from('stage_transitions').insert({
+      opportunity_id: oppId,
+      from_stage_id: opp.stage_id,
+      to_stage_id: targetStageId,
+      transitioned_by: dbUser.id,
+      notes: notes || null,
+    }).select().single();
 
-  const resolveFlag = useCallback((flagId: string) => {
-    setFlags(prev =>
-      prev.map(f =>
-        f.id === flagId
-          ? { ...f, resolvedAt: now(), resolvedBy: 'Nick Kringas' }
-          : f,
-      ),
-    );
-  }, []);
+    setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, stage_id: targetStageId, updated_at: new Date().toISOString() } : o));
+    if (tr) setStageTransitions(prev => [tr, ...prev]);
+    return true;
+  }, [dbUser, opportunities]);
 
-  const toggleQualification = useCallback(
-    (contactId: string, field: 'budget' | 'authority' | 'need' | 'timing') => {
-      setQualChecks(prev => {
-        const existing = prev.find(q => q.contactId === contactId);
-        if (existing) {
-          return prev.map(q =>
-            q.contactId === contactId
-              ? { ...q, [field]: !q[field], checkedAt: now() }
-              : q,
-          );
+  const closeOpportunity = useCallback(async (oppId: number, won: boolean, reasonId?: number, notes?: string) => {
+    if (!dbUser) return;
+    const targetStage = salesStages.find(s => s.name === (won ? 'Closed Won' : 'Closed Lost'));
+    if (!targetStage) return;
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp) return;
+    const now = new Date().toISOString();
+
+    const updateFields: Partial<DbOpportunity> = {
+      stage_id: targetStage.id,
+      closed_at: now,
+      updated_at: now,
+    };
+    if (won) {
+      updateFields.contract_value = opp.deal_value;
+      updateFields.contract_start_date = now.split('T')[0];
+      updateFields.contract_end_date = new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0];
+    } else {
+      updateFields.closed_reason_id = reasonId ?? null;
+      updateFields.closed_reason_notes = notes || null;
+    }
+
+    const { error } = await supabase.from('opportunities').update(updateFields).eq('id', oppId);
+    if (error) return;
+
+    const { data: tr } = await supabase.from('stage_transitions').insert({
+      opportunity_id: oppId,
+      from_stage_id: opp.stage_id,
+      to_stage_id: targetStage.id,
+      transitioned_by: dbUser.id,
+      notes: notes || (won ? 'Deal closed won.' : 'Deal closed lost.'),
+    }).select().single();
+
+    setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, ...updateFields } : o));
+    if (tr) setStageTransitions(prev => [tr, ...prev]);
+
+    // company status update handled by DB trigger
+    if (won) {
+      setCompanies(prev => prev.map(c => c.id === opp.company_id ? { ...c, status: 'Customer' } : c));
+    }
+  }, [dbUser, opportunities, salesStages]);
+
+  const toggleQualification = useCallback(async (companyId: number, field: 'budget' | 'authority' | 'need' | 'timing') => {
+    const existing = qualificationChecks.find(q => q.company_id === companyId);
+    if (existing) {
+      const newVal = !existing[field];
+      const { data } = await supabase.from('qualification_checks')
+        .update({ [field]: newVal })
+        .eq('company_id', companyId)
+        .select()
+        .single();
+      if (data) {
+        setQualificationChecks(prev => prev.map(q => q.company_id === companyId ? data : q));
+        // Update lead_status if needed
+        if (data.budget && data.authority && data.need && data.timing) {
+          await supabase.from('companies').update({ lead_status: 'Qualified' }).eq('id', companyId);
+          setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, lead_status: 'Qualified' } : c));
         }
-        return [
-          ...prev,
-          {
-            id: genId('qc'),
-            contactId,
-            budget: field === 'budget',
-            authority: field === 'authority',
-            need: field === 'need',
-            timing: field === 'timing',
-            checkedAt: now(),
-          },
-        ];
-      });
-    },
-    [],
-  );
+      }
+    } else {
+      const { data } = await supabase.from('qualification_checks').insert({
+        company_id: companyId,
+        budget: field === 'budget',
+        authority: field === 'authority',
+        need: field === 'need',
+        timing: field === 'timing',
+      }).select().single();
+      if (data) setQualificationChecks(prev => [...prev, data]);
+    }
+  }, [qualificationChecks]);
 
-  const updateOpportunity = useCallback(
-    (oppId: string, fields: Partial<Opportunity>) => {
-      setOpportunities(prev =>
-        prev.map(o => (o.id === oppId ? { ...o, ...fields, updatedAt: now() } : o)),
-      );
-    },
-    [],
-  );
+  const resolveFlag = useCallback(async (flagId: number) => {
+    if (!dbUser) return;
+    const { error } = await supabase.from('inactivity_flags').update({
+      resolved_at: new Date().toISOString(),
+      resolved_by: dbUser.id,
+    }).eq('id', flagId);
+    if (!error) {
+      setInactivityFlags(prev => prev.map(f => f.id === flagId
+        ? { ...f, resolved_at: new Date().toISOString(), resolved_by: dbUser.id }
+        : f
+      ));
+    }
+  }, [dbUser]);
 
   return (
-    <DataContext.Provider
-      value={{
-        companies,
-        contacts,
-        opportunities,
-        activities,
-        stageTransitions,
-        qualificationChecks,
-        inactivityFlags,
-        addCompany,
-        addContact,
-        addActivity,
-        advanceStage,
-        moveToStage,
-        closeOpportunity,
-        resolveFlag,
-        toggleQualification,
-        updateOpportunity,
-      }}
-    >
+    <DataContext.Provider value={{
+      companies, contacts, opportunities, activities,
+      stageTransitions, qualificationChecks, inactivityFlags,
+      salesStages, lossReasons, loading,
+      getStageById, getUserName,
+      addCompany, addContact, addActivity, addOpportunity,
+      updateOpportunity, moveToStage, closeOpportunity,
+      toggleQualification, resolveFlag,
+      refreshData: fetchAll,
+    }}>
       {children}
     </DataContext.Provider>
   );

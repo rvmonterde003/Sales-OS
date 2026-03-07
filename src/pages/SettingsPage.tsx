@@ -1,16 +1,10 @@
-import { salesStages } from '../data/mockData';
-import { Settings, Info } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 export default function SettingsPage() {
-  const lossReasons = [
-    'Budget constraints', 'Chose competitor', 'No decision / stalled',
-    'Timing not right', 'Requirements not met', 'Internal restructuring',
-    'Champion left company', 'Other',
-  ];
+  const { salesStages, lossReasons } = useData();
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
-      {/* Toolbar */}
       <div className="flex items-center px-5 py-2 border-b border-gray-200 bg-white shrink-0">
         <span className="text-[13px] font-medium text-gray-900">Settings</span>
       </div>
@@ -29,33 +23,28 @@ export default function SettingsPage() {
                   <th className="text-left font-medium text-gray-500 px-4 py-2">Entry criteria</th>
                   <th className="text-left font-medium text-gray-500 px-4 py-2">Exit criteria</th>
                   <th className="text-left font-medium text-gray-500 px-4 py-2">Required fields</th>
-                  <th className="text-center font-medium text-gray-500 px-4 py-2">Terminal</th>
                 </tr>
               </thead>
               <tbody>
                 {salesStages.map(stage => (
                   <tr key={stage.id} className="border-b border-gray-100">
-                    <td className="px-4 py-2 text-gray-400 font-mono text-[12px]">{stage.stageOrder}</td>
+                    <td className="px-4 py-2 text-gray-400 font-mono text-[12px]">{stage.stage_order}</td>
                     <td className="px-4 py-2 font-medium text-gray-900">{stage.name}</td>
-                    <td className="px-4 py-2 text-gray-500 text-[12px]">{stage.definition}</td>
-                    <td className="px-4 py-2 text-gray-500 text-[12px]">{stage.entryCriteria || '—'}</td>
-                    <td className="px-4 py-2 text-gray-500 text-[12px]">{stage.exitCriteria || '—'}</td>
+                    <td className="px-4 py-2 text-gray-500 text-[12px]">{stage.definition || '--'}</td>
+                    <td className="px-4 py-2 text-gray-500 text-[12px]">{stage.entry_criteria || '--'}</td>
+                    <td className="px-4 py-2 text-gray-500 text-[12px]">{stage.exit_criteria || '--'}</td>
                     <td className="px-4 py-2">
                       <div className="flex flex-wrap gap-1">
-                        {stage.requiredFields.map(f => (
+                        {(stage.required_fields || []).map((f: string) => (
                           <span key={f} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono">{f}</span>
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-center">
-                      {stage.isTerminal ? (
-                        <span className="text-[11px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Yes</span>
-                      ) : (
-                        <span className="text-[11px] text-gray-300">—</span>
-                      )}
-                    </td>
                   </tr>
                 ))}
+                {salesStages.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[13px] text-gray-400">No stages configured. Run the schema SQL to seed default stages.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -84,34 +73,15 @@ export default function SettingsPage() {
             <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Standardized Loss Reasons</h2>
             <div className="space-y-1.5">
               {lossReasons.map((reason, i) => (
-                <div key={reason} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
+                <div key={reason.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-md">
                   <span className="text-[11px] text-gray-400 font-mono w-4">{i + 1}.</span>
-                  <span className="text-[12px] text-gray-700">{reason}</span>
+                  <span className="text-[12px] text-gray-700">{reason.reason}</span>
                 </div>
               ))}
+              {lossReasons.length === 0 && (
+                <p className="text-[12px] text-gray-400 text-center py-4">No loss reasons configured. Run the schema SQL to seed defaults.</p>
+              )}
             </div>
-          </div>
-        </div>
-
-        {/* ICP */}
-        <div className="border border-gray-200 rounded-lg p-4">
-          <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Ideal Customer Profile (ICP)</h2>
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: 'Industry', value: 'Law Firms (all practice areas)' },
-              { label: 'Firm Size', value: '11-200 attorneys' },
-              { label: 'Decision Maker', value: 'Managing Partner, Director of Operations, CTO' },
-              { label: 'Geography', value: 'United States (primary)' },
-              { label: 'Pain Points', value: 'Manual workflows, poor case tracking, no analytics' },
-              { label: 'Budget Range', value: '$18,000 - $120,000 ARR' },
-              { label: 'Tech Readiness', value: 'Currently using basic tools' },
-              { label: 'Buying Trigger', value: 'Growth, new partner, compliance' },
-            ].map(item => (
-              <div key={item.label} className="p-2.5 bg-gray-50 rounded-md">
-                <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mb-0.5">{item.label}</div>
-                <div className="text-[12px] text-gray-700">{item.value}</div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
