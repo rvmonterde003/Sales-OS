@@ -3,7 +3,7 @@ import { formatCurrency } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
 type ViewMode = 'monthly' | 'yearly';
@@ -28,6 +28,37 @@ export default function RevenueTimeline() {
 
   const chartData = useMemo(() => {
     if (viewMode === 'monthly') {
+      // Monthly view: show data points by day
+      const days: Record<string, number> = {};
+      wonOpps.forEach(o => {
+        if (!o.closed_at) return;
+        const d = new Date(o.closed_at);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        days[key] = (days[key] || 0) + o.deal_value;
+      });
+      // Build cumulative running total by day
+      const sorted = Object.entries(days).sort(([a], [b]) => a.localeCompare(b));
+      let cumulative = 0;
+      return sorted.map(([day, value]) => {
+        cumulative += value;
+        const d = new Date(day);
+        const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return { name: label, revenue: value, cumulative };
+      });
+    } else {
+      // Yearly view: show monthly averages
+      const monthlyTotals: Record<string, number> = {};
+      const monthCounts: Record<string, Set<string>> = {};
+      wonOpps.forEach(o => {
+        if (!o.closed_at) return;
+        const d = new Date(o.closed_at);
+        const yearKey = String(d.getFullYear());
+        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        monthlyTotals[yearKey] = (monthlyTotals[yearKey] || 0) + o.deal_value;
+        if (!monthCounts[yearKey]) monthCounts[yearKey] = new Set();
+        monthCounts[yearKey].add(monthKey);
+      });
+      // Also compute per-month data for the line
       const months: Record<string, number> = {};
       wonOpps.forEach(o => {
         if (!o.closed_at) return;
@@ -42,16 +73,6 @@ export default function RevenueTimeline() {
           const label = new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
           return { name: label, revenue: value };
         });
-    } else {
-      const years: Record<string, number> = {};
-      wonOpps.forEach(o => {
-        if (!o.closed_at) return;
-        const key = String(new Date(o.closed_at).getFullYear());
-        years[key] = (years[key] || 0) + o.deal_value;
-      });
-      return Object.entries(years)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([year, value]) => ({ name: year, revenue: value }));
     }
   }, [wonOpps, viewMode]);
 
@@ -119,21 +140,27 @@ export default function RevenueTimeline() {
       {/* Chart */}
       <div className="border border-gray-200 rounded-lg p-4 mb-5">
         <h3 className="text-[13px] font-semibold text-gray-900 mb-4">
-          Revenue by {viewMode === 'monthly' ? 'Month' : 'Year'}
+          {viewMode === 'monthly' ? 'Daily Revenue' : 'Monthly Revenue'}
           {filterUser !== 'all' && ` - ${getUserName(Number(filterUser))}`}
         </h3>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} barSize={viewMode === 'yearly' ? 60 : 32}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}
-                tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}K`} />
+                tickFormatter={(v: number) => v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v}`} />
               <Tooltip contentStyle={{ fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}
                 formatter={(v: number | undefined) => formatCurrency(v ?? 0)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="revenue" name="Won Revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Line type="monotone" dataKey="revenue" name={viewMode === 'monthly' ? 'Daily Revenue' : 'Monthly Revenue'}
+                stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+              {viewMode === 'monthly' && (
+                <Line type="monotone" dataKey="cumulative" name="Cumulative"
+                  stroke="#8b5cf6" strokeWidth={2} strokeDasharray="5 5"
+                  dot={{ r: 3, fill: '#8b5cf6' }} activeDot={{ r: 5 }} />
+              )}
+            </LineChart>
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-[13px] text-gray-400">

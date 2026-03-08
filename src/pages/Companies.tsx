@@ -1,23 +1,37 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { timeAgo } from '../lib/helpers';
+import { timeAgo, COMPANY_STATUSES, LEAD_STATUSES, DEAL_SOURCES } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
 import AddCompanyModal from '../components/AddCompanyModal';
-import { Search, Plus, ArrowUpDown, Filter, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, SlidersHorizontal } from 'lucide-react';
 
 export default function Companies() {
   const { companies, contacts, opportunities, getUserName } = useData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [showAdd, setShowAdd] = useState(false);
 
-  const filtered = companies.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.industry || '').toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const sources = useMemo(() => [...new Set(companies.map(c => c.source).filter(Boolean))], [companies]);
+
+  const filtered = useMemo(() => {
+    return companies.filter(c => {
+      const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+        (c.industry || '').toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+      const matchesLead = leadStatusFilter === 'all' || c.lead_status === leadStatusFilter;
+      const matchesSource = sourceFilter === 'all' || c.source === sourceFilter;
+      return matchesSearch && matchesStatus && matchesLead && matchesSource;
+    });
+  }, [companies, search, statusFilter, leadStatusFilter, sourceFilter]);
+
+  const activeFilters = [
+    statusFilter !== 'all' ? { label: `Status: ${statusFilter}`, clear: () => setStatusFilter('all') } : null,
+    leadStatusFilter !== 'all' ? { label: `Lead: ${leadStatusFilter}`, clear: () => setLeadStatusFilter('all') } : null,
+    sourceFilter !== 'all' ? { label: `Source: ${sourceFilter}`, clear: () => setSourceFilter('all') } : null,
+  ].filter(Boolean) as { label: string; clear: () => void }[];
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -25,9 +39,9 @@ export default function Companies() {
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
             <span className="w-3.5 h-3.5 rounded bg-purple-500 flex items-center justify-center">
-              <span className="text-white text-[8px] font-bold">C</span>
+              <span className="text-white text-[8px] font-bold">L</span>
             </span>
-            All Companies
+            All Law Firms
           </button>
           <button className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
             <SlidersHorizontal className="w-3 h-3" /> View settings
@@ -41,33 +55,42 @@ export default function Companies() {
           </div>
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> New Company
+            <Plus className="w-3.5 h-3.5" /> New Law Firm
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-5 py-1.5 border-b border-gray-100 bg-white shrink-0">
-        <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
-          <ArrowUpDown className="w-3 h-3" /> Sort
-        </button>
-        <div className="relative group">
-          <button className="flex items-center gap-1 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
-            <Filter className="w-3 h-3" /> Filter
-          </button>
-          <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-20 hidden group-hover:block py-1 min-w-[140px]">
-            {['all', 'Prospect', 'Customer', 'Former'].map(s => (
-              <button key={s} onClick={() => setStatusFilter(s)}
-                className={`block w-full text-left px-3 py-1.5 text-[12px] hover:bg-gray-50 ${statusFilter === s ? 'text-violet-600 font-medium' : 'text-gray-600'}`}>
-                {s === 'all' ? 'All statuses' : s}
-              </button>
+      {/* Filters bar */}
+      <div className="flex items-center gap-2 px-5 py-1.5 border-b border-gray-100 bg-white shrink-0 flex-wrap">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
+          <option value="all">All Statuses</option>
+          {COMPANY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={leadStatusFilter} onChange={e => setLeadStatusFilter(e.target.value)}
+          className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
+          <option value="all">All Lead Statuses</option>
+          {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+          className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
+          <option value="all">All Sources</option>
+          {DEAL_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+          {sources.filter(s => !DEAL_SOURCES.includes(s as typeof DEAL_SOURCES[number])).map(s => (
+            <option key={s!} value={s!}>{s}</option>
+          ))}
+        </select>
+        {activeFilters.length > 0 && (
+          <>
+            {activeFilters.map(f => (
+              <span key={f.label} className="text-[11px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
+                {f.label}
+                <button onClick={f.clear} className="ml-1 text-violet-400 hover:text-violet-700">&times;</button>
+              </span>
             ))}
-          </div>
-        </div>
-        {statusFilter !== 'all' && (
-          <span className="text-[11px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
-            Status: {statusFilter}
-            <button onClick={() => setStatusFilter('all')} className="ml-1 text-violet-400 hover:text-violet-700">&times;</button>
-          </span>
+            <button onClick={() => { setStatusFilter('all'); setLeadStatusFilter('all'); setSourceFilter('all'); }}
+              className="text-[11px] text-gray-400 hover:text-gray-600 px-1">Clear all</button>
+          </>
         )}
       </div>
 
@@ -75,7 +98,7 @@ export default function Companies() {
         <table className="attio-table w-full text-[13px]">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/60">
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Company</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Law Firm</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Status</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Lead Status</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Industry</th>
@@ -111,7 +134,7 @@ export default function Companies() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={11} className="px-4 py-8 text-center text-[13px] text-gray-400">No companies found</td></tr>
+              <tr><td colSpan={11} className="px-4 py-8 text-center text-[13px] text-gray-400">No law firms found</td></tr>
             )}
           </tbody>
         </table>
