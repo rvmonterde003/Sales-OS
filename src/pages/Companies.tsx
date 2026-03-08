@@ -80,6 +80,7 @@ export default function Companies() {
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Lead Status</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Industry</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Firm Size</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Source</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Website</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Last Activity</th>
               <th className="text-center font-medium text-gray-500 px-4 py-2 whitespace-nowrap"># Contacts</th>
@@ -100,6 +101,7 @@ export default function Companies() {
                   <td className="px-4 py-2.5"><StatusBadge status={company.lead_status} variant="tag" /></td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{company.industry || '--'}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.firm_size || '--'} variant="tag" /></td>
+                  <td className="px-4 py-2.5">{company.source ? <StatusBadge status={company.source} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>}</td>
                   <td className="px-4 py-2.5"><span className="text-violet-600 text-[12px]">{company.website || '--'}</span></td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{timeAgo(company.last_activity_at)}</td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{companyContacts.length || ''}</td>
@@ -109,7 +111,7 @@ export default function Companies() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-[13px] text-gray-400">No companies found</td></tr>
+              <tr><td colSpan={11} className="px-4 py-8 text-center text-[13px] text-gray-400">No companies found</td></tr>
             )}
           </tbody>
         </table>

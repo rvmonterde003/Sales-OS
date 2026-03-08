@@ -11,6 +11,7 @@ import ContactDetail from './pages/ContactDetail';
 import OpportunityDetail from './pages/OpportunityDetail';
 import ActivitiesPage from './pages/ActivitiesPage';
 import RiskFlags from './pages/RiskFlags';
+import RevenueTimeline from './pages/RevenueTimeline';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
 
@@ -35,6 +36,7 @@ function AuthGate() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/revenue" element={<RevenueTimeline />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/companies" element={<Companies />} />
             <Route path="/companies/:id" element={<CompanyDetail />} />

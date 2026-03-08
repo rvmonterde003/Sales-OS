@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
 import AddContactModal from '../components/AddContactModal';
-import { Search, Plus, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, SlidersHorizontal, Linkedin } from 'lucide-react';
 
 export default function Contacts() {
   const { contacts, companies } = useData();
@@ -69,6 +69,7 @@ export default function Contacts() {
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Role</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Email</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Phone</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">LinkedIn</th>
             </tr>
           </thead>
           <tbody>
@@ -92,11 +93,19 @@ export default function Contacts() {
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.email || '--'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.phone || '--'}</td>
+                  <td className="px-4 py-2.5">
+                    {contact.linkedin_url ? (
+                      <a href={contact.linkedin_url} target="_blank" rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800">
+                        <Linkedin className="w-3.5 h-3.5" />
+                      </a>
+                    ) : <span className="text-gray-300 text-[12px]">--</span>}
+                  </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-[13px] text-gray-400">No contacts found</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-[13px] text-gray-400">No contacts found</td></tr>
             )}
           </tbody>
         </table>

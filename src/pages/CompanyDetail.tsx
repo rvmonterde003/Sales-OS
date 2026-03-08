@@ -8,7 +8,7 @@ import AddContactModal from '../components/AddContactModal';
 import CreateOpportunityModal from '../components/CreateOpportunityModal';
 import {
   ArrowLeft, Globe, Plus, MessageSquarePlus, Briefcase,
-  FileText, Download, Paperclip, ChevronRight, ChevronLeft, Save,
+  FileText, Download, Paperclip, ChevronRight, ChevronLeft, Save, Linkedin,
 } from 'lucide-react';
 
 export default function CompanyDetail() {
@@ -18,7 +18,7 @@ export default function CompanyDetail() {
     companies, contacts, opportunities, activities,
     qualificationChecks, inactivityFlags, stageTransitions,
     salesStages, getUserName, saveQualification, updateCompanyLeadStatus,
-    moveToStage, pushbackStage, hasActivitySinceLastTransition,
+    moveToStage, pushbackStage, hasActivitySinceLastTransition, reopenOpportunity,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -118,6 +118,8 @@ export default function CompanyDetail() {
   };
 
   const isPushbackActivity = (notes: string | null) => notes?.startsWith('[PUSHBACK]');
+  const isCloseActivity = (notes: string | null) => notes?.startsWith('[CLOSED');
+  const isReopenActivity = (notes: string | null) => notes?.startsWith('[REOPENED]');
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -171,6 +173,7 @@ export default function CompanyDetail() {
                         <Globe className="w-3 h-3" />{company.website}
                       </span>
                     )}
+                    {company.source && <StatusBadge status={company.source} variant="tag" />}
                   </div>
                   {company.lead_status === 'Unqualified' && company.unqualify_reason && (
                     <div className="mt-1 text-[11px] text-red-600">Reason: {company.unqualify_reason}</div>
@@ -375,6 +378,7 @@ export default function CompanyDetail() {
                     <th className="text-left font-medium text-gray-500 px-5 py-1.5">Role</th>
                     <th className="text-left font-medium text-gray-500 px-5 py-1.5">Email</th>
                     <th className="text-left font-medium text-gray-500 px-5 py-1.5">Phone</th>
+                    <th className="text-left font-medium text-gray-500 px-5 py-1.5">LinkedIn</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -389,10 +393,17 @@ export default function CompanyDetail() {
                       <td className="px-5 py-2">{contact.role ? <StatusBadge status={contact.role} variant="tag" /> : <span className="text-gray-300">--</span>}</td>
                       <td className="px-5 py-2 text-gray-400 text-[12px]">{contact.email || '--'}</td>
                       <td className="px-5 py-2 text-gray-400 text-[12px]">{contact.phone || '--'}</td>
+                      <td className="px-5 py-2">
+                        {contact.linkedin_url ? (
+                          <a href={contact.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                            <Linkedin className="w-3.5 h-3.5" />
+                          </a>
+                        ) : <span className="text-gray-300">--</span>}
+                      </td>
                     </tr>
                   ))}
                   {companyContacts.length === 0 && (
-                    <tr><td colSpan={5} className="px-5 py-4 text-center text-[12px] text-gray-400">No contacts yet</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-4 text-center text-[12px] text-gray-400">No contacts yet</td></tr>
                   )}
                 </tbody>
               </table>
@@ -413,6 +424,7 @@ export default function CompanyDetail() {
                       <th className="text-right font-medium text-gray-500 px-5 py-1.5">Value</th>
                       <th className="text-left font-medium text-gray-500 px-5 py-1.5">Close date</th>
                       <th className="text-right font-medium text-gray-500 px-5 py-1.5">Age</th>
+                      <th className="text-right font-medium text-gray-500 px-5 py-1.5"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -427,6 +439,12 @@ export default function CompanyDetail() {
                           <td className="px-5 py-2 text-right font-medium text-gray-900">{formatCurrency(opp.deal_value)}</td>
                           <td className="px-5 py-2 text-gray-500 text-[12px]">{formatDate(opp.closed_at)}</td>
                           <td className="px-5 py-2 text-right text-gray-400 text-[12px]">{getDealAge(opp.created_at, opp.closed_at)}d</td>
+                          <td className="px-5 py-2 text-right">
+                            <button onClick={() => reopenOpportunity(opp.id)}
+                              className="text-[11px] text-violet-600 hover:text-violet-800 font-medium">
+                              Reopen
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -450,7 +468,11 @@ export default function CompanyDetail() {
                   const attachments = (act.attachments || []) as { name: string; url: string; type: string }[];
                   const isPushback = isPushbackActivity(act.notes);
                   return (
-                    <div key={act.id} className={`flex gap-2.5 rounded-md p-1.5 ${isPushback ? 'bg-amber-50 border border-amber-200' : ''}`}>
+                    <div key={act.id} className={`flex gap-2.5 rounded-md p-1.5 ${
+                      isPushback ? 'bg-amber-50 border border-amber-200' :
+                      isCloseActivity(act.notes) ? 'bg-red-50 border border-red-200' :
+                      isReopenActivity(act.notes) ? 'bg-emerald-50 border border-emerald-200' : ''
+                    }`}>
                       <StatusBadge status={act.activity_type} variant="tag" />
                       <div className="flex-1 min-w-0">
                         {actContact && (

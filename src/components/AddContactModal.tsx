@@ -17,11 +17,12 @@ export default function AddContactModal({ isOpen, onClose, defaultCompanyId }: P
   const [phone, setPhone] = useState('');
   const [title, setTitle] = useState('');
   const [role, setRole] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
   const [companyId, setCompanyId] = useState<number | ''>(defaultCompanyId || '');
 
   if (!isOpen) return null;
 
-  const reset = () => { setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setTitle(''); setRole(''); setCompanyId(defaultCompanyId || ''); };
+  const reset = () => { setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setTitle(''); setRole(''); setLinkedinUrl(''); setCompanyId(defaultCompanyId || ''); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +35,7 @@ export default function AddContactModal({ isOpen, onClose, defaultCompanyId }: P
       phone: phone.trim() || undefined,
       title: title.trim() || undefined,
       role: role || undefined,
+      linkedin_url: linkedinUrl.trim() || undefined,
     });
     reset();
     onClose();
@@ -93,6 +95,12 @@ export default function AddContactModal({ isOpen, onClose, defaultCompanyId }: P
                 {CONTACT_ROLES.map(r => <option key={r}>{r}</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-[12px] font-medium text-gray-500 mb-1">LinkedIn Profile</label>
+            <input type="url" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)}
+              placeholder="https://linkedin.com/in/..."
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent" />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose}

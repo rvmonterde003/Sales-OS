@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { FIRM_SIZES } from '../lib/helpers';
+import { FIRM_SIZES, DEAL_SOURCES } from '../lib/helpers';
 
 interface Props {
   isOpen: boolean;
@@ -14,10 +14,11 @@ export default function AddCompanyModal({ isOpen, onClose }: Props) {
   const [industry, setIndustry] = useState('');
   const [firmSize, setFirmSize] = useState('');
   const [website, setWebsite] = useState('');
+  const [source, setSource] = useState('');
 
   if (!isOpen) return null;
 
-  const reset = () => { setName(''); setIndustry(''); setFirmSize(''); setWebsite(''); };
+  const reset = () => { setName(''); setIndustry(''); setFirmSize(''); setWebsite(''); setSource(''); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +28,7 @@ export default function AddCompanyModal({ isOpen, onClose }: Props) {
       industry: industry.trim() || undefined,
       firm_size: firmSize || undefined,
       website: website.trim() || undefined,
+      source: source || undefined,
     });
     reset();
     onClose();
@@ -69,6 +71,14 @@ export default function AddCompanyModal({ isOpen, onClose }: Props) {
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 placeholder="example.com" />
             </div>
+          </div>
+          <div>
+            <label className="block text-[12px] font-medium text-gray-500 mb-1">Lead Source</label>
+            <select value={source} onChange={e => setSource(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+              <option value="">Select source...</option>
+              {DEAL_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose}

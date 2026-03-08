@@ -9,6 +9,7 @@ import {
   ChevronDown,
   BarChart3,
   MessageSquare,
+  TrendingUp,
 } from 'lucide-react';
 
 const recordItems = [
@@ -43,6 +44,7 @@ export default function Sidebar() {
         {/* Top nav items */}
         <div className="space-y-0.5 pb-3">
           <SidebarLink to="/" icon={BarChart3} label="Business Metrics" active={isActive('/')} end />
+          <SidebarLink to="/revenue" icon={TrendingUp} label="Revenue Timeline" active={isActive('/revenue')} />
           <SidebarLink to="/activities" icon={MessageSquare} label="Activities" active={isActive('/activities')} />
           <SidebarLink to="/risk-flags" icon={AlertTriangle} label="Risk Flags" active={isActive('/risk-flags')} />
         </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { OPPORTUNITY_TYPES, DEAL_SOURCES } from '../lib/helpers';
+import { OPPORTUNITY_TYPES } from '../lib/helpers';
 
 interface Props {
   isOpen: boolean;
@@ -10,13 +10,13 @@ interface Props {
 }
 
 export default function CreateOpportunityModal({ isOpen, onClose, companyId }: Props) {
-  const { contacts, addOpportunity } = useData();
+  const { contacts, companies, addOpportunity } = useData();
   const companyContacts = contacts.filter(c => c.company_id === companyId);
+  const company = companies.find(c => c.id === companyId);
 
   const [opportunityType, setOpportunityType] = useState<string>('New');
   const [serviceDescription, setServiceDescription] = useState('');
   const [dealValue, setDealValue] = useState('');
-  const [source, setSource] = useState<string>('');
   const [expectedCloseDate, setExpectedCloseDate] = useState('');
   const [primaryContactId, setPrimaryContactId] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
@@ -24,7 +24,7 @@ export default function CreateOpportunityModal({ isOpen, onClose, companyId }: P
 
   if (!isOpen) return null;
 
-  const canSubmit = opportunityType && serviceDescription.trim() && dealValue && source && expectedCloseDate;
+  const canSubmit = opportunityType && serviceDescription.trim() && dealValue && expectedCloseDate;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +35,7 @@ export default function CreateOpportunityModal({ isOpen, onClose, companyId }: P
       opportunity_type: opportunityType,
       service_description: serviceDescription.trim(),
       deal_value: Number(dealValue),
-      source,
+      source: company?.source || 'Other',
       expected_close_date: expectedCloseDate,
       primary_contact_id: primaryContactId || null,
       notes: notes.trim() || undefined,
@@ -44,7 +44,6 @@ export default function CreateOpportunityModal({ isOpen, onClose, companyId }: P
     setOpportunityType('New');
     setServiceDescription('');
     setDealValue('');
-    setSource('');
     setExpectedCloseDate('');
     setPrimaryContactId('');
     setNotes('');
@@ -85,12 +84,11 @@ export default function CreateOpportunityModal({ isOpen, onClose, companyId }: P
               </div>
             </div>
             <div>
-              <label className="block text-[12px] font-medium text-gray-500 mb-1">Source *</label>
-              <select value={source} onChange={e => setSource(e.target.value)} required
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent">
-                <option value="">Select source...</option>
-                {DEAL_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <label className="block text-[12px] font-medium text-gray-500 mb-1">Source</label>
+              <div className="w-full border border-gray-200 bg-gray-50 rounded-md px-3 py-2 text-[13px] text-gray-600">
+                {company?.source || 'Not set'}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-0.5">Inherited from company</p>
             </div>
           </div>
 

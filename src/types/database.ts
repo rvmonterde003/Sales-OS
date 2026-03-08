@@ -18,6 +18,7 @@ export interface DbCompany {
   industry: string | null;
   firm_size: string | null;
   website: string | null;
+  source: string | null;
   status: 'Prospect' | 'Customer' | 'Former';
   lead_status: 'MQL' | 'SQL' | 'Qualified' | 'Unqualified';
   unqualify_reason: string | null;
@@ -36,6 +37,7 @@ export interface DbContact {
   phone: string | null;
   title: string | null;
   role: string | null;
+  linkedin_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -209,6 +211,7 @@ export interface Database {
           industry?: string | null;
           firm_size?: string | null;
           website?: string | null;
+          source?: string | null;
           status?: 'Prospect' | 'Customer' | 'Former';
           lead_status?: 'MQL' | 'SQL' | 'Qualified' | 'Unqualified';
           unqualify_reason?: string | null;
@@ -223,6 +226,7 @@ export interface Database {
           industry?: string | null;
           firm_size?: string | null;
           website?: string | null;
+          source?: string | null;
           status?: 'Prospect' | 'Customer' | 'Former';
           lead_status?: 'MQL' | 'SQL' | 'Qualified' | 'Unqualified';
           unqualify_reason?: string | null;
@@ -244,6 +248,7 @@ export interface Database {
           phone?: string | null;
           title?: string | null;
           role?: string | null;
+          linkedin_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -256,6 +261,7 @@ export interface Database {
           phone?: string | null;
           title?: string | null;
           role?: string | null;
+          linkedin_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };

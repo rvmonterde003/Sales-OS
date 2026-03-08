@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
-import { ArrowLeft, Mail, Phone, Building2 } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Building2, Linkedin } from 'lucide-react';
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +54,12 @@ export default function ContactDetail() {
                   )}
                   {contact.phone && (
                     <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {contact.phone}</span>
+                  )}
+                  {contact.linkedin_url && (
+                    <a href={contact.linkedin_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-blue-600 hover:text-blue-800">
+                      <Linkedin className="w-3 h-3" /> LinkedIn
+                    </a>
                   )}
                 </div>
               </div>

@@ -22,15 +22,16 @@ interface DataContextType {
   getStageById: (id: number) => DbSalesStage | undefined;
   getUserName: (userId: number) => string;
 
-  addCompany: (c: { name: string; industry?: string; firm_size?: string; website?: string; }) => Promise<DbCompany | null>;
+  addCompany: (c: { name: string; industry?: string; firm_size?: string; website?: string; source?: string; }) => Promise<DbCompany | null>;
   updateCompanyLeadStatus: (companyId: number, status: DbCompany['lead_status'], unqualifyReason?: string) => Promise<void>;
-  addContact: (c: { company_id: number; first_name: string; last_name: string; email?: string; phone?: string; title?: string; role?: string; }) => Promise<DbContact | null>;
+  addContact: (c: { company_id: number; first_name: string; last_name: string; email?: string; phone?: string; title?: string; role?: string; linkedin_url?: string; }) => Promise<DbContact | null>;
   addActivity: (a: { company_id: number; contact_id?: number | null; related_opportunity_id?: number | null; activity_type: string; notes?: string; activity_timestamp?: string; attachments?: { name: string; url: string; type: string }[]; }) => Promise<void>;
   addOpportunity: (o: { company_id: number; opportunity_type: string; service_description: string; deal_value: number; source: string; expected_close_date: string; primary_contact_id?: number | null; notes?: string; }) => Promise<DbOpportunity | null>;
   updateOpportunity: (id: number, fields: Partial<DbOpportunity>) => Promise<void>;
   moveToStage: (oppId: number, targetStageId: number, notes?: string) => Promise<boolean>;
   pushbackStage: (oppId: number, reason: string) => Promise<boolean>;
   closeOpportunity: (oppId: number, won: boolean, reasonId?: number, notes?: string) => Promise<void>;
+  reopenOpportunity: (oppId: number) => Promise<void>;
   saveQualification: (companyId: number, fields: { pain_and_value: string; timeline: string; budget_pricing_fit: string; person_in_position: string }) => Promise<void>;
   resolveFlag: (flagId: number) => Promise<void>;
   hasActivitySinceLastTransition: (oppId: number) => boolean;
@@ -103,7 +104,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const addCompany = useCallback(async (c: {
-    name: string; industry?: string; firm_size?: string; website?: string;
+    name: string; industry?: string; firm_size?: string; website?: string; source?: string;
   }) => {
     if (!dbUser) return null;
     const { data, error } = await supabase.from('companies').insert({
@@ -111,6 +112,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       industry: c.industry || null,
       firm_size: c.firm_size || null,
       website: c.website || null,
+      source: c.source || null,
       status: 'Prospect',
       lead_status: 'MQL',
       owner_id: dbUser.id,
@@ -145,7 +147,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addContact = useCallback(async (c: {
     company_id: number; first_name: string; last_name: string;
-    email?: string; phone?: string; title?: string; role?: string;
+    email?: string; phone?: string; title?: string; role?: string; linkedin_url?: string;
   }) => {
     const { data, error } = await supabase.from('contacts').insert({
       company_id: c.company_id,
@@ -155,6 +157,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       phone: c.phone || null,
       title: c.title || null,
       role: c.role || null,
+      linkedin_url: c.linkedin_url || null,
     }).select().single();
     if (!error && data) {
       setContacts(prev => [...prev, data]);
@@ -338,7 +341,79 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (won) {
       setCompanies(prev => prev.map(c => c.id === opp.company_id ? { ...c, status: 'Customer' } : c));
     }
+
+    // Auto-log close activity
+    const closeNoteText = won
+      ? `[CLOSED WON] ${notes || 'Deal closed won.'}`
+      : `[CLOSED LOST] ${notes || 'Deal closed lost.'}`;
+    const { data: actData } = await supabase.from('activities').insert({
+      company_id: opp.company_id,
+      related_opportunity_id: oppId,
+      activity_type: 'Note' as const,
+      notes: closeNoteText,
+      logged_by: dbUser.id,
+      activity_timestamp: now,
+    }).select().single();
+    if (actData) {
+      setActivities(prev => [actData, ...prev]);
+      setCompanies(prev => prev.map(c =>
+        c.id === opp.company_id ? { ...c, last_activity_at: now } : c
+      ));
+    }
   }, [dbUser, opportunities, salesStages]);
+
+  const reopenOpportunity = useCallback(async (oppId: number) => {
+    if (!dbUser) return;
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp || !opp.closed_at) return;
+    // Reopen to the last non-terminal stage (Verbal by default, or Discovery if no history)
+    const nonTerminal = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
+    const lastNonTerminalTransition = stageTransitions
+      .filter(t => t.opportunity_id === oppId)
+      .find(t => nonTerminal.some(s => s.id === t.from_stage_id));
+    const targetStage = lastNonTerminalTransition
+      ? salesStages.find(s => s.id === lastNonTerminalTransition.from_stage_id)
+      : nonTerminal[0];
+    if (!targetStage) return;
+
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('opportunities').update({
+      stage_id: targetStage.id,
+      closed_at: null,
+      closed_reason_id: null,
+      closed_reason_notes: null,
+      contract_value: null,
+      updated_at: now,
+    }).eq('id', oppId);
+    if (error) return;
+
+    const { data: tr } = await supabase.from('stage_transitions').insert({
+      opportunity_id: oppId,
+      from_stage_id: opp.stage_id,
+      to_stage_id: targetStage.id,
+      transitioned_by: dbUser.id,
+      notes: 'Opportunity reopened.',
+    }).select().single();
+
+    setOpportunities(prev => prev.map(o => o.id === oppId ? {
+      ...o, stage_id: targetStage.id, closed_at: null, closed_reason_id: null,
+      closed_reason_notes: null, contract_value: null, updated_at: now,
+    } : o));
+    if (tr) setStageTransitions(prev => [tr, ...prev]);
+
+    // Auto-log reopen activity
+    const { data: actData } = await supabase.from('activities').insert({
+      company_id: opp.company_id,
+      related_opportunity_id: oppId,
+      activity_type: 'Note' as const,
+      notes: `[REOPENED] Opportunity reopened to ${targetStage.name}.`,
+      logged_by: dbUser.id,
+      activity_timestamp: now,
+    }).select().single();
+    if (actData) {
+      setActivities(prev => [actData, ...prev]);
+    }
+  }, [dbUser, opportunities, salesStages, stageTransitions]);
 
   const saveQualification = useCallback(async (
     companyId: number,
@@ -384,7 +459,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       salesStages, lossReasons, loading,
       getStageById, getUserName,
       addCompany, updateCompanyLeadStatus, addContact, addActivity, addOpportunity,
-      updateOpportunity, moveToStage, pushbackStage, closeOpportunity,
+      updateOpportunity, moveToStage, pushbackStage, closeOpportunity, reopenOpportunity,
       saveQualification, resolveFlag, hasActivitySinceLastTransition,
       refreshData: fetchAll,
     }}>

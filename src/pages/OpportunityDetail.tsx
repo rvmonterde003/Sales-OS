@@ -6,7 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import ActivityLogModal from '../components/ActivityLogModal';
 import {
   ArrowLeft, AlertTriangle, ArrowRight, CheckCircle2, Circle,
-  MessageSquarePlus, ChevronRight, Trophy, XCircle, Undo2,
+  MessageSquarePlus, ChevronRight, Trophy, XCircle, Undo2, RotateCcw,
 } from 'lucide-react';
 
 export default function OpportunityDetail() {
@@ -16,7 +16,7 @@ export default function OpportunityDetail() {
     opportunities, companies, contacts, activities,
     stageTransitions, qualificationChecks, inactivityFlags,
     salesStages, lossReasons, getUserName,
-    moveToStage, closeOpportunity, pushbackStage, hasActivitySinceLastTransition,
+    moveToStage, closeOpportunity, reopenOpportunity, pushbackStage, hasActivitySinceLastTransition,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState<'won' | 'lost' | null>(null);
@@ -81,6 +81,8 @@ export default function OpportunityDetail() {
   };
 
   const isPushbackActivity = (notes: string | null) => notes?.startsWith('[PUSHBACK]');
+  const isCloseActivity = (notes: string | null) => notes?.startsWith('[CLOSED');
+  const isReopenActivity = (notes: string | null) => notes?.startsWith('[REOPENED]');
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -92,18 +94,16 @@ export default function OpportunityDetail() {
           <span className="text-gray-300">/</span>
           <span className="text-[12px] text-gray-900 font-medium">{company?.name}</span>
         </div>
-        {!isClosed && (
+        {!isClosed ? (
           <div className="flex items-center gap-2">
             <button onClick={() => setShowActivityModal(true)}
               className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50 transition-colors">
               <MessageSquarePlus className="w-3 h-3" /> Log Activity
             </button>
-            {/* Push Back button */}
             <button onClick={() => setPushbackOpen(true)} disabled={isAtFirst}
               className="flex items-center gap-1.5 text-[12px] text-amber-600 border border-amber-200 rounded-md px-2.5 py-1.5 hover:bg-amber-50 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
               <Undo2 className="w-3 h-3" /> Push Back
             </button>
-            {/* Advance - requires activity */}
             <button onClick={handleAdvance} disabled={!hasActivity || isAtVerbal}
               className="flex items-center gap-1.5 text-[12px] text-white bg-violet-600 rounded-md px-2.5 py-1.5 hover:bg-violet-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
               title={!hasActivity ? 'Log activity before advancing' : ''}>
@@ -118,6 +118,18 @@ export default function OpportunityDetail() {
             <button onClick={() => setShowCloseModal('lost')}
               className="flex items-center gap-1.5 text-[12px] text-white bg-red-500 rounded-md px-2.5 py-1.5 hover:bg-red-600 transition-colors font-medium">
               <XCircle className="w-3 h-3" /> Mark Lost
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className={`text-[12px] font-medium px-2.5 py-1.5 rounded-md ${
+              stage?.name === 'Won' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}>
+              Opportunity Closed ({stage?.name})
+            </span>
+            <button onClick={() => reopenOpportunity(opp.id)}
+              className="flex items-center gap-1.5 text-[12px] text-violet-600 border border-violet-200 rounded-md px-2.5 py-1.5 hover:bg-violet-50 transition-colors font-medium">
+              <RotateCcw className="w-3 h-3" /> Reopen
             </button>
           </div>
         )}
@@ -148,7 +160,7 @@ export default function OpportunityDetail() {
                 )}
                 <span className="text-gray-300">|</span>
                 <span>Owner: {getUserName(opp.owner_id)}</span>
-                <span className="text-gray-300">|</span><span>Source: {opp.source}</span>
+                <span className="text-gray-300">|</span><span>Source: {company?.source || opp.source}</span>
               </div>
             </div>
             <div className="text-right">
@@ -263,8 +275,14 @@ export default function OpportunityDetail() {
               ) : (
                 oppActivities.map(act => {
                   const isPB = isPushbackActivity(act.notes);
+                  const isClose = isCloseActivity(act.notes);
+                  const isReopen = isReopenActivity(act.notes);
                   return (
-                    <div key={act.id} className={`flex gap-2.5 ${isPB ? 'bg-amber-50 border border-amber-200 rounded-md p-2' : ''}`}>
+                    <div key={act.id} className={`flex gap-2.5 ${
+                      isPB ? 'bg-amber-50 border border-amber-200 rounded-md p-2' :
+                      isClose ? 'bg-red-50 border border-red-200 rounded-md p-2' :
+                      isReopen ? 'bg-emerald-50 border border-emerald-200 rounded-md p-2' : ''
+                    }`}>
                       <StatusBadge status={act.activity_type} variant="tag" />
                       <div className="flex-1 min-w-0">
                         <p className="text-[12px] text-gray-700 leading-relaxed">
