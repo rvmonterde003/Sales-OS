@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, UNQUALIFY_REASONS } from '../lib/helpers';
+import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, UNQUALIFY_REASONS, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
-import InlinePipelineControl from '../components/InlinePipelineControl';
 import ActivityLogModal from '../components/ActivityLogModal';
 import AddContactModal from '../components/AddContactModal';
 import CreateOpportunityModal from '../components/CreateOpportunityModal';
-import { ArrowLeft, Globe, Plus, MessageSquarePlus, Briefcase, FileText, Download, Paperclip } from 'lucide-react';
+import {
+  ArrowLeft, Globe, Plus, MessageSquarePlus, Briefcase,
+  FileText, Download, Paperclip, ChevronRight, ChevronLeft, Save,
+} from 'lucide-react';
 
 export default function CompanyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -15,15 +17,38 @@ export default function CompanyDetail() {
   const {
     companies, contacts, opportunities, activities,
     qualificationChecks, inactivityFlags, stageTransitions,
-    salesStages, getUserName, updateQualification, updateCompanyLeadStatus,
+    salesStages, getUserName, saveQualification, updateCompanyLeadStatus,
+    moveToStage, pushbackStage, hasActivitySinceLastTransition,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showCreateOpp, setShowCreateOpp] = useState(false);
   const [showUnqualifyModal, setShowUnqualifyModal] = useState(false);
   const [unqualifyReason, setUnqualifyReason] = useState('');
+  const [unqualifyOther, setUnqualifyOther] = useState('');
+  const [showPushbackModal, setShowPushbackModal] = useState<number | null>(null);
+  const [pushbackReason, setPushbackReason] = useState('');
+
+  // Local qualification form state (saved on button click, not realtime)
+  const [qualForm, setQualForm] = useState({ pain_and_value: '', timeline: '', budget_pricing_fit: '', person_in_position: '' });
+  const [qualDirty, setQualDirty] = useState(false);
 
   const company = companies.find(c => c.id === companyId);
+  const qualification = qualificationChecks.find(q => q.company_id === companyId);
+
+  // Sync local form when qualification data loads/changes
+  useEffect(() => {
+    if (qualification) {
+      setQualForm({
+        pain_and_value: qualification.pain_and_value || '',
+        timeline: qualification.timeline || '',
+        budget_pricing_fit: qualification.budget_pricing_fit || '',
+        person_in_position: qualification.person_in_position || '',
+      });
+      setQualDirty(false);
+    }
+  }, [qualification]);
+
   if (!company) {
     return (
       <div className="p-6">
@@ -39,37 +64,60 @@ export default function CompanyDetail() {
   const companyActivities = activities
     .filter(a => a.company_id === company.id)
     .sort((a, b) => new Date(b.activity_timestamp).getTime() - new Date(a.activity_timestamp).getTime());
-  const qualification = qualificationChecks.find(q => q.company_id === company.id);
   const flags = inactivityFlags.filter(f => f.company_id === company.id && !f.resolved_at);
+  const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
 
-  const qualFields: Array<{ key: 'pain_and_value' | 'timeline' | 'budget_pricing_fit' | 'person_in_position'; label: string; placeholder: string }> = [
+  const qualFields: Array<{ key: keyof typeof qualForm; label: string; placeholder: string }> = [
     { key: 'pain_and_value', label: 'Prospect Articulated Pain & Value', placeholder: 'Describe how the prospect sees value...' },
     { key: 'timeline', label: 'Timeline', placeholder: 'Expected timeline or trigger events...' },
     { key: 'budget_pricing_fit', label: 'Budget / Pricing Fit', placeholder: 'Budget availability and pricing alignment...' },
     { key: 'person_in_position', label: 'Person in Position', placeholder: 'Decision maker and their authority...' },
   ];
-  const bantScore = qualification ? qualFields.filter(f => (qualification[f.key] || '').trim() !== '').length : 0;
+  const bantScore = qualFields.filter(f => qualForm[f.key].trim() !== '').length;
+  const isQualified = company.lead_status === 'Qualified';
 
   const getDaysInStage = (oppId: number, createdAt: string) => {
     const t = stageTransitions.find(t => t.opportunity_id === oppId);
     return Math.floor((Date.now() - new Date(t?.created_at || createdAt).getTime()) / 86400000);
   };
 
-  const handleLeadStatusAdvance = () => {
-    if (company.lead_status === 'MQL') {
-      updateCompanyLeadStatus(company.id, 'SQL');
-    } else if (company.lead_status === 'SQL' && bantScore === 4) {
-      updateCompanyLeadStatus(company.id, 'Qualified');
+  const handleSaveQualification = async () => {
+    await saveQualification(company.id, qualForm);
+    setQualDirty(false);
+    // If all 4 filled, auto-qualify the company
+    if (bantScore === 4) {
+      await updateCompanyLeadStatus(company.id, 'Qualified');
     }
   };
 
   const handleUnqualify = () => {
-    if (unqualifyReason) {
-      updateCompanyLeadStatus(company.id, 'Unqualified', unqualifyReason);
+    const reason = unqualifyReason === 'Other' ? (unqualifyOther.trim() || 'Other') : unqualifyReason;
+    if (reason) {
+      updateCompanyLeadStatus(company.id, 'Unqualified', reason);
       setShowUnqualifyModal(false);
       setUnqualifyReason('');
+      setUnqualifyOther('');
     }
   };
+
+  const handleAdvanceStage = (oppId: number) => {
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp) return;
+    const currentStage = salesStages.find(s => s.id === opp.stage_id);
+    if (!currentStage) return;
+    const nextStage = nonTerminalStages.find(s => s.stage_order === currentStage.stage_order + 1);
+    if (nextStage) moveToStage(oppId, nextStage.id, 'Stage advanced.');
+  };
+
+  const handlePushback = async () => {
+    if (showPushbackModal && pushbackReason) {
+      await pushbackStage(showPushbackModal, pushbackReason);
+      setShowPushbackModal(null);
+      setPushbackReason('');
+    }
+  };
+
+  const isPushbackActivity = (notes: string | null) => notes?.startsWith('[PUSHBACK]');
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -87,7 +135,7 @@ export default function CompanyDetail() {
             className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
             <Plus className="w-3 h-3" /> Add Contact
           </button>
-          {bantScore === 4 && company.lead_status === 'Qualified' && (
+          {isQualified && (
             <button onClick={() => setShowCreateOpp(true)}
               className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
               <Briefcase className="w-3 h-3" /> Create Opportunity
@@ -137,47 +185,6 @@ export default function CompanyDetail() {
           </div>
         </div>
 
-        {/* Stage 0 Pipeline: MQL → SQL → Qualify/Unqualify */}
-        {company.lead_status !== 'Qualified' && company.lead_status !== 'Unqualified' && (
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Stage 0 Pipeline</h2>
-            <div className="flex items-center gap-2 mb-3">
-              {(['MQL', 'SQL', 'Qualified'] as const).map((step, i) => {
-                const isActive = step === company.lead_status;
-                const isPast = (step === 'MQL' && (company.lead_status === 'SQL' || company.lead_status === 'Qualified')) ||
-                               (step === 'SQL' && company.lead_status === 'Qualified');
-                return (
-                  <div key={step} className="flex items-center gap-2 flex-1">
-                    <div className={`flex-1 h-2 rounded-full ${isActive ? 'bg-violet-500' : isPast ? 'bg-emerald-400' : 'bg-gray-200'}`} />
-                    <span className={`text-[11px] ${isActive ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>{step}</span>
-                    {i < 2 && <span className="text-gray-300 text-[10px]">&rarr;</span>}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-2">
-              {company.lead_status === 'MQL' && (
-                <button onClick={handleLeadStatusAdvance}
-                  className="text-[12px] bg-violet-600 text-white px-3 py-1.5 rounded-md hover:bg-violet-700 font-medium">
-                  Advance to SQL
-                </button>
-              )}
-              {company.lead_status === 'SQL' && (
-                <>
-                  <button onClick={handleLeadStatusAdvance} disabled={bantScore < 4}
-                    className="text-[12px] bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-40">
-                    Qualify {bantScore < 4 ? `(${bantScore}/4 BANT)` : ''}
-                  </button>
-                  <button onClick={() => setShowUnqualifyModal(true)}
-                    className="text-[12px] bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 font-medium">
-                    Unqualify
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Risk Flags */}
         {flags.length > 0 && (
           <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-md px-3 py-2 flex items-center gap-2 flex-wrap">
@@ -185,78 +192,176 @@ export default function CompanyDetail() {
           </div>
         )}
 
-        {/* Pipeline Status */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Pipeline Status</h2>
-          {openOpps.length === 0 ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-center">
-              <p className="text-[13px] text-gray-400">No active opportunities</p>
-              <p className="text-[11px] text-gray-300 mt-1">Create an opportunity to start tracking</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {openOpps.map(opp => {
-                const stage = salesStages.find(s => s.id === opp.stage_id);
-                const contact = opp.primary_contact_id ? contacts.find(c => c.id === opp.primary_contact_id) : null;
-                return (
-                  <Link key={opp.id} to={`/opportunities/${opp.id}`}
-                    className="block border border-gray-200 rounded-lg p-3 hover:border-violet-300 hover:bg-violet-50/30 transition-colors">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[12px] font-medium text-gray-900">{stage?.name}</span>
-                        <StatusBadge status={opp.opportunity_type} variant="tag" />
-                        {opp.forecast_category && <StatusBadge status={opp.forecast_category} variant="tag" />}
-                      </div>
-                      <span className="text-[14px] font-bold text-gray-900">{formatCurrency(opp.deal_value)}</span>
-                    </div>
-                    <p className="text-[11px] text-gray-500 mb-2 truncate">{opp.service_description}</p>
-                    <InlinePipelineControl oppId={opp.id} currentStageId={opp.stage_id} compact />
-                    <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400">
-                      <span>{contact ? `${contact.first_name} ${contact.last_name}` : '--'}</span>
-                      <div className="flex items-center gap-3">
-                        {opp.expected_close_date && <span>Close: {formatDate(opp.expected_close_date)}</span>}
-                        <span>{getDealAge(opp.created_at, opp.closed_at)}d old</span>
-                        <span className={getDaysInStage(opp.id, opp.created_at) > 14 ? 'text-red-500' : ''}>
-                          {getDaysInStage(opp.id, opp.created_at)}d in stage
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Qualification (BANT) */}
-        <div className="px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[13px] font-semibold text-gray-900">Qualification (BANT)</h2>
-            <span className="text-[11px] text-gray-400">{bantScore}/4 completed</span>
-          </div>
-          <div className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(bantScore / 4) * 100}%` }} />
-          </div>
-          <div className="space-y-3">
-            {qualFields.map(item => (
-              <div key={item.key}>
-                <label className="block text-[12px] font-medium text-gray-700 mb-1">{item.label}</label>
-                <textarea
-                  value={qualification?.[item.key] || ''}
-                  onChange={e => updateQualification(company.id, item.key, e.target.value)}
-                  placeholder={item.placeholder}
-                  rows={2}
-                  className="w-full border border-gray-200 rounded-md px-3 py-2 text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                />
+        {/* Stage 0: MQL → SQL button */}
+        {company.lead_status === 'MQL' && (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                <div className="flex-1 h-2 rounded-full bg-violet-500" />
+                <span className="text-[11px] text-violet-600 font-semibold">MQL</span>
+                <span className="text-gray-300 text-[10px]">&rarr;</span>
+                <div className="flex-1 h-2 rounded-full bg-gray-200" />
+                <span className="text-[11px] text-gray-400">SQL</span>
+                <span className="text-gray-300 text-[10px]">&rarr;</span>
+                <div className="flex-1 h-2 rounded-full bg-gray-200" />
+                <span className="text-[11px] text-gray-400">Qualified</span>
               </div>
-            ))}
+              <button onClick={() => updateCompanyLeadStatus(company.id, 'SQL')}
+                className="text-[12px] bg-violet-600 text-white px-3 py-1.5 rounded-md hover:bg-violet-700 font-medium">
+                Move to SQL
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Stage 0: SQL → Qualification form */}
+        {company.lead_status === 'SQL' && (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 flex-1">
+                <div className="flex-1 h-2 rounded-full bg-emerald-400" />
+                <span className="text-[11px] text-gray-400">MQL</span>
+                <span className="text-gray-300 text-[10px]">&rarr;</span>
+                <div className="flex-1 h-2 rounded-full bg-violet-500" />
+                <span className="text-[11px] text-violet-600 font-semibold">SQL</span>
+                <span className="text-gray-300 text-[10px]">&rarr;</span>
+                <div className="flex-1 h-2 rounded-full bg-gray-200" />
+                <span className="text-[11px] text-gray-400">Qualified</span>
+              </div>
+            </div>
+
+            <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Qualification</h2>
+            <div className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(bantScore / 4) * 100}%` }} />
+            </div>
+            <div className="space-y-3">
+              {qualFields.map(item => (
+                <div key={item.key}>
+                  <label className="block text-[12px] font-medium text-gray-700 mb-1">{item.label}</label>
+                  <textarea
+                    value={qualForm[item.key]}
+                    onChange={e => { setQualForm(prev => ({ ...prev, [item.key]: e.target.value })); setQualDirty(true); }}
+                    placeholder={item.placeholder}
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-md px-3 py-2 text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <button onClick={handleSaveQualification} disabled={bantScore < 4}
+                className="flex items-center gap-1.5 text-[12px] bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-40 transition-colors">
+                <Save className="w-3 h-3" /> Save Qualification {bantScore < 4 ? `(${bantScore}/4)` : ''}
+              </button>
+              {qualDirty && bantScore < 4 && (
+                <button onClick={async () => { await saveQualification(company.id, qualForm); setQualDirty(false); }}
+                  className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50">
+                  <Save className="w-3 h-3" /> Save Draft
+                </button>
+              )}
+              <button onClick={() => setShowUnqualifyModal(true)}
+                className="text-[12px] bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 font-medium">
+                Unqualify
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Pipeline Status — Only show when Qualified */}
+        {isQualified && (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Pipeline</h2>
+            {openOpps.length === 0 ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-center">
+                <p className="text-[13px] text-gray-400">No active opportunities</p>
+                <p className="text-[11px] text-gray-300 mt-1">Create an opportunity to start tracking deals</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {openOpps.map(opp => {
+                  const stage = salesStages.find(s => s.id === opp.stage_id);
+                  const contact = opp.primary_contact_id ? contacts.find(c => c.id === opp.primary_contact_id) : null;
+                  const hasActivity = hasActivitySinceLastTransition(opp.id);
+                  const isTerminal = stage?.name === 'Won' || stage?.name === 'Loss';
+                  const isAtFirst = opp.stage_id === nonTerminalStages[0]?.id;
+                  const isAtLast = opp.stage_id === nonTerminalStages[nonTerminalStages.length - 1]?.id;
+
+                  return (
+                    <div key={opp.id} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Link to={`/opportunities/${opp.id}`} className="text-[12px] font-medium text-gray-900 hover:text-violet-600">{stage?.name}</Link>
+                          <StatusBadge status={opp.opportunity_type} variant="tag" />
+                          {opp.forecast_category && <StatusBadge status={opp.forecast_category} variant="tag" />}
+                        </div>
+                        <span className="text-[14px] font-bold text-gray-900">{formatCurrency(opp.deal_value)}</span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mb-2 truncate">{opp.service_description}</p>
+
+                      {/* Stage progress bar */}
+                      <div className="flex items-center gap-0.5 mb-2">
+                        {nonTerminalStages.map(s => {
+                          const isCurrent = s.id === opp.stage_id;
+                          const isPast = s.stage_order < (stage?.stage_order || 0);
+                          // Check if this stage was advanced with an activity (green)
+                          const wasAdvancedTo = stageTransitions.some(t => t.opportunity_id === opp.id && t.to_stage_id === s.id && t.from_stage_id !== null);
+                          return (
+                            <div key={s.id} className="flex-1 group relative">
+                              <div className={`h-1.5 rounded-full ${
+                                isCurrent ? 'bg-violet-500' : isPast && wasAdvancedTo ? 'bg-emerald-400' : isPast ? 'bg-emerald-400' : 'bg-gray-200'
+                              }`} />
+                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+                                {s.name}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Stage controls */}
+                      {!isTerminal && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <button onClick={() => setShowPushbackModal(opp.id)} disabled={isAtFirst}
+                            className="flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md hover:bg-amber-100 disabled:opacity-30 transition-colors">
+                            <ChevronLeft className="w-3 h-3" /> Push Back
+                          </button>
+                          <button onClick={() => handleAdvanceStage(opp.id)} disabled={!hasActivity || isAtLast}
+                            className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded-md transition-colors ${
+                              hasActivity ? 'text-white bg-violet-600 hover:bg-violet-700' : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                            }`}
+                            title={!hasActivity ? 'Log an activity before advancing' : 'Advance to next stage'}>
+                            Advance <ChevronRight className="w-3 h-3" />
+                          </button>
+                          {hasActivity && (
+                            <span className="text-[10px] text-emerald-600 font-medium">Activity logged</span>
+                          )}
+                          {!hasActivity && (
+                            <span className="text-[10px] text-amber-600">Requires activity log</span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400">
+                        <span>{contact ? `${contact.first_name} ${contact.last_name}` : '--'}</span>
+                        <div className="flex items-center gap-3">
+                          {opp.expected_close_date && <span>Close: {formatDate(opp.expected_close_date)}</span>}
+                          <span>{getDealAge(opp.created_at, opp.closed_at)}d old</span>
+                          <span className={getDaysInStage(opp.id, opp.created_at) > 14 ? 'text-red-500' : ''}>
+                            {getDaysInStage(opp.id, opp.created_at)}d in stage
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-3 divide-x divide-gray-100 min-h-0">
           {/* Left: Contacts + Opportunities */}
           <div className="col-span-2">
-            {/* Contacts */}
             <div className="border-b border-gray-100">
               <div className="px-5 py-3 flex items-center gap-2">
                 <h2 className="text-[13px] font-semibold text-gray-900">Contacts</h2>
@@ -293,44 +398,42 @@ export default function CompanyDetail() {
               </table>
             </div>
 
-            {/* Opportunities */}
-            <div>
-              <div className="px-5 py-3 flex items-center gap-2">
-                <h2 className="text-[13px] font-semibold text-gray-900">Opportunities</h2>
-                <span className="text-[11px] text-gray-400">{companyOpps.length}</span>
+            {/* Closed Opportunities table */}
+            {companyOpps.filter(o => o.closed_at).length > 0 && (
+              <div>
+                <div className="px-5 py-3 flex items-center gap-2">
+                  <h2 className="text-[13px] font-semibold text-gray-900">Closed Deals</h2>
+                  <span className="text-[11px] text-gray-400">{companyOpps.filter(o => o.closed_at).length}</span>
+                </div>
+                <table className="attio-table w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/40">
+                      <th className="text-left font-medium text-gray-500 px-5 py-1.5">Result</th>
+                      <th className="text-left font-medium text-gray-500 px-5 py-1.5">Service</th>
+                      <th className="text-right font-medium text-gray-500 px-5 py-1.5">Value</th>
+                      <th className="text-left font-medium text-gray-500 px-5 py-1.5">Close date</th>
+                      <th className="text-right font-medium text-gray-500 px-5 py-1.5">Age</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companyOpps.filter(o => o.closed_at).map(opp => {
+                      const stage = salesStages.find(s => s.id === opp.stage_id);
+                      return (
+                        <tr key={opp.id} className="border-b border-gray-50">
+                          <td className="px-5 py-2">
+                            <Link to={`/opportunities/${opp.id}`} className="font-medium"><StatusBadge status={stage?.name || ''} variant="tag" /></Link>
+                          </td>
+                          <td className="px-5 py-2 text-gray-600 text-[12px] truncate max-w-[200px]">{opp.service_description}</td>
+                          <td className="px-5 py-2 text-right font-medium text-gray-900">{formatCurrency(opp.deal_value)}</td>
+                          <td className="px-5 py-2 text-gray-500 text-[12px]">{formatDate(opp.closed_at)}</td>
+                          <td className="px-5 py-2 text-right text-gray-400 text-[12px]">{getDealAge(opp.created_at, opp.closed_at)}d</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <table className="attio-table w-full text-[13px]">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/40">
-                    <th className="text-left font-medium text-gray-500 px-5 py-1.5">Stage</th>
-                    <th className="text-left font-medium text-gray-500 px-5 py-1.5">Service</th>
-                    <th className="text-left font-medium text-gray-500 px-5 py-1.5">Type</th>
-                    <th className="text-right font-medium text-gray-500 px-5 py-1.5">Value</th>
-                    <th className="text-left font-medium text-gray-500 px-5 py-1.5">Forecast</th>
-                    <th className="text-left font-medium text-gray-500 px-5 py-1.5">Close date</th>
-                    <th className="text-right font-medium text-gray-500 px-5 py-1.5">Age</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {companyOpps.map(opp => {
-                    const stage = salesStages.find(s => s.id === opp.stage_id);
-                    return (
-                      <tr key={opp.id} className="border-b border-gray-50">
-                        <td className="px-5 py-2">
-                          <Link to={`/opportunities/${opp.id}`} className="text-gray-900 hover:text-violet-600 font-medium">{stage?.name}</Link>
-                        </td>
-                        <td className="px-5 py-2 text-gray-600 text-[12px] truncate max-w-[200px]">{opp.service_description}</td>
-                        <td className="px-5 py-2"><StatusBadge status={opp.opportunity_type} variant="tag" /></td>
-                        <td className="px-5 py-2 text-right font-medium text-gray-900">{formatCurrency(opp.deal_value)}</td>
-                        <td className="px-5 py-2">{opp.forecast_category ? <StatusBadge status={opp.forecast_category} variant="tag" /> : <span className="text-gray-300">--</span>}</td>
-                        <td className="px-5 py-2 text-gray-500 text-[12px]">{formatDate(opp.expected_close_date)}</td>
-                        <td className="px-5 py-2 text-right text-gray-400 text-[12px]">{getDealAge(opp.created_at, opp.closed_at)}d</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            )}
           </div>
 
           {/* Right: Activity Timeline */}
@@ -345,8 +448,9 @@ export default function CompanyDetail() {
                 companyActivities.map(act => {
                   const actContact = act.contact_id ? contacts.find(c => c.id === act.contact_id) : null;
                   const attachments = (act.attachments || []) as { name: string; url: string; type: string }[];
+                  const isPushback = isPushbackActivity(act.notes);
                   return (
-                    <div key={act.id} className="flex gap-2.5">
+                    <div key={act.id} className={`flex gap-2.5 rounded-md p-1.5 ${isPushback ? 'bg-amber-50 border border-amber-200' : ''}`}>
                       <StatusBadge status={act.activity_type} variant="tag" />
                       <div className="flex-1 min-w-0">
                         {actContact && (
@@ -354,7 +458,9 @@ export default function CompanyDetail() {
                             {actContact.first_name} {actContact.last_name}
                           </Link>
                         )}
-                        <p className="text-[12px] text-gray-700 leading-relaxed">{act.notes || '--'}</p>
+                        <p className={`text-[12px] leading-relaxed ${isPushback ? 'text-amber-800 font-medium' : 'text-gray-700'}`}>
+                          {act.notes || '--'}
+                        </p>
                         {attachments.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             {attachments.map((file, i) => (
@@ -407,12 +513,50 @@ export default function CompanyDetail() {
                   {UNQUALIFY_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
+              {unqualifyReason === 'Other' && (
+                <div>
+                  <label className="block text-[12px] font-medium text-gray-500 mb-1">Specify</label>
+                  <input value={unqualifyOther} onChange={e => setUnqualifyOther(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    placeholder="Enter reason..." />
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowUnqualifyModal(false)}
                   className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
-                <button onClick={handleUnqualify} disabled={!unqualifyReason}
+                <button onClick={handleUnqualify} disabled={!unqualifyReason || (unqualifyReason === 'Other' && !unqualifyOther.trim())}
                   className="px-3 py-1.5 text-[13px] bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-40 font-medium">
                   Confirm Unqualify
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pushback Modal */}
+      {showPushbackModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setShowPushbackModal(null)}>
+          <div className="bg-white rounded-lg shadow-xl w-[400px]" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-[15px] font-semibold text-gray-900">Push Back Stage</h2>
+              <p className="text-[12px] text-gray-500 mt-0.5">This will move the deal back one stage and log the reason.</p>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-[12px] font-medium text-gray-500 mb-1">Reason *</label>
+                <select value={pushbackReason} onChange={e => setPushbackReason(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                  <option value="">Select reason...</option>
+                  {PUSHBACK_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowPushbackModal(null)}
+                  className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
+                <button onClick={handlePushback} disabled={!pushbackReason}
+                  className="px-3 py-1.5 text-[13px] bg-amber-500 text-white rounded-md hover:bg-amber-600 disabled:opacity-40 font-medium">
+                  Confirm Push Back
                 </button>
               </div>
             </div>

@@ -55,6 +55,15 @@ export const FORECAST_CATEGORIES = ['Pipeline', 'Best Case', 'Commit'] as const;
 export const COMPANY_STATUSES = ['Prospect', 'Customer', 'Former'] as const;
 export const LEAD_STATUSES = ['MQL', 'SQL', 'Qualified', 'Unqualified'] as const;
 export const UNQUALIFY_REASONS = [
+  'No budget',
+  'No need / bad fit',
+  'No response',
+  'Wrong timing',
+  'Not ICP',
+  'Other',
+] as const;
+
+export const PUSHBACK_REASONS = [
   'Champion left',
   'Technical issues',
   'M&A at firm',

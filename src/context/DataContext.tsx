@@ -8,7 +8,6 @@ import type {
 } from '../types/database';
 
 interface DataContextType {
-  // Data
   companies: DbCompany[];
   contacts: DbContact[];
   opportunities: DbOpportunity[];
@@ -20,11 +19,9 @@ interface DataContextType {
   lossReasons: DbLossReason[];
   loading: boolean;
 
-  // Lookups
   getStageById: (id: number) => DbSalesStage | undefined;
   getUserName: (userId: number) => string;
 
-  // Mutations
   addCompany: (c: { name: string; industry?: string; firm_size?: string; website?: string; }) => Promise<DbCompany | null>;
   updateCompanyLeadStatus: (companyId: number, status: DbCompany['lead_status'], unqualifyReason?: string) => Promise<void>;
   addContact: (c: { company_id: number; first_name: string; last_name: string; email?: string; phone?: string; title?: string; role?: string; }) => Promise<DbContact | null>;
@@ -32,9 +29,11 @@ interface DataContextType {
   addOpportunity: (o: { company_id: number; opportunity_type: string; service_description: string; deal_value: number; source: string; expected_close_date: string; primary_contact_id?: number | null; notes?: string; }) => Promise<DbOpportunity | null>;
   updateOpportunity: (id: number, fields: Partial<DbOpportunity>) => Promise<void>;
   moveToStage: (oppId: number, targetStageId: number, notes?: string) => Promise<boolean>;
+  pushbackStage: (oppId: number, reason: string) => Promise<boolean>;
   closeOpportunity: (oppId: number, won: boolean, reasonId?: number, notes?: string) => Promise<void>;
-  updateQualification: (companyId: number, field: keyof Pick<DbQualificationCheck, 'pain_and_value' | 'timeline' | 'budget_pricing_fit' | 'person_in_position'>, value: string) => Promise<void>;
+  saveQualification: (companyId: number, fields: { pain_and_value: string; timeline: string; budget_pricing_fit: string; person_in_position: string }) => Promise<void>;
   resolveFlag: (flagId: number) => Promise<void>;
+  hasActivitySinceLastTransition: (oppId: number) => boolean;
   refreshData: () => Promise<void>;
 }
 
@@ -118,7 +117,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }).select().single();
     if (!error && data) {
       setCompanies(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
-      // Create empty qualification check
       await supabase.from('qualification_checks').insert({
         company_id: data.id,
         pain_and_value: '',
@@ -232,6 +230,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Check if there's been an activity logged for this opp's company since the last stage transition
+  const hasActivitySinceLastTransition = useCallback((oppId: number): boolean => {
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp) return false;
+    const lastTransition = stageTransitions.find(t => t.opportunity_id === oppId);
+    const refTime = lastTransition ? new Date(lastTransition.created_at).getTime() : new Date(opp.created_at).getTime();
+    return activities.some(a =>
+      a.company_id === opp.company_id &&
+      (a.related_opportunity_id === oppId || a.related_opportunity_id === null) &&
+      new Date(a.activity_timestamp).getTime() > refTime
+    );
+  }, [opportunities, stageTransitions, activities]);
+
   const moveToStage = useCallback(async (oppId: number, targetStageId: number, notes?: string): Promise<boolean> => {
     if (!dbUser) return false;
     const opp = opportunities.find(o => o.id === oppId);
@@ -255,6 +266,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (tr) setStageTransitions(prev => [tr, ...prev]);
     return true;
   }, [dbUser, opportunities]);
+
+  const pushbackStage = useCallback(async (oppId: number, reason: string): Promise<boolean> => {
+    if (!dbUser) return false;
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp) return false;
+    const currentStage = salesStages.find(s => s.id === opp.stage_id);
+    if (!currentStage) return false;
+    const nonTerminal = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
+    const prevStage = nonTerminal.find(s => s.stage_order === currentStage.stage_order - 1);
+    if (!prevStage) return false;
+
+    // Move stage back
+    const moved = await moveToStage(oppId, prevStage.id, `Pushed back: ${reason}`);
+    if (!moved) return false;
+
+    // Auto-log pushback activity
+    const { data: actData, error: actError } = await supabase.from('activities').insert({
+      company_id: opp.company_id,
+      related_opportunity_id: oppId,
+      activity_type: 'Note' as const,
+      notes: `[PUSHBACK] ${currentStage.name} → ${prevStage.name}: ${reason}`,
+      logged_by: dbUser.id,
+      activity_timestamp: new Date().toISOString(),
+    }).select().single();
+    if (!actError && actData) {
+      setActivities(prev => [actData, ...prev]);
+      setCompanies(prev => prev.map(c =>
+        c.id === opp.company_id ? { ...c, last_activity_at: actData.activity_timestamp } : c
+      ));
+    }
+    return true;
+  }, [dbUser, opportunities, salesStages, moveToStage]);
 
   const closeOpportunity = useCallback(async (oppId: number, won: boolean, reasonId?: number, notes?: string) => {
     if (!dbUser) return;
@@ -297,33 +340,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [dbUser, opportunities, salesStages]);
 
-  const updateQualification = useCallback(async (
+  const saveQualification = useCallback(async (
     companyId: number,
-    field: 'pain_and_value' | 'timeline' | 'budget_pricing_fit' | 'person_in_position',
-    value: string,
+    fields: { pain_and_value: string; timeline: string; budget_pricing_fit: string; person_in_position: string },
   ) => {
     const existing = qualificationChecks.find(q => q.company_id === companyId);
     if (existing) {
       const { data } = await supabase.from('qualification_checks')
-        .update({ [field]: value })
+        .update(fields)
         .eq('company_id', companyId)
         .select()
         .single();
       if (data) {
         setQualificationChecks(prev => prev.map(q => q.company_id === companyId ? data : q));
-        // Check if all 4 fields are filled → auto-qualify
-        const allFilled = ['pain_and_value', 'timeline', 'budget_pricing_fit', 'person_in_position'].every(
-          f => f === field ? value.trim() !== '' : (existing[f as keyof typeof existing] as string || '').trim() !== ''
-        );
-        if (allFilled) {
-          await supabase.from('companies').update({ lead_status: 'Qualified' }).eq('id', companyId);
-          setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, lead_status: 'Qualified' } : c));
-        }
       }
     } else {
       const { data } = await supabase.from('qualification_checks').insert({
         company_id: companyId,
-        [field]: value,
+        ...fields,
       }).select().single();
       if (data) setQualificationChecks(prev => [...prev, data]);
     }
@@ -350,8 +384,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       salesStages, lossReasons, loading,
       getStageById, getUserName,
       addCompany, updateCompanyLeadStatus, addContact, addActivity, addOpportunity,
-      updateOpportunity, moveToStage, closeOpportunity,
-      updateQualification, resolveFlag,
+      updateOpportunity, moveToStage, pushbackStage, closeOpportunity,
+      saveQualification, resolveFlag, hasActivitySinceLastTransition,
       refreshData: fetchAll,
     }}>
       {children}

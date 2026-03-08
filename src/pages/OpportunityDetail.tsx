@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { formatCurrency, formatDate, formatDateTime, getDealAge } from '../lib/helpers';
+import { formatCurrency, formatDate, formatDateTime, getDealAge, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
 import ActivityLogModal from '../components/ActivityLogModal';
 import {
   ArrowLeft, AlertTriangle, ArrowRight, CheckCircle2, Circle,
-  MessageSquarePlus, ChevronRight, Trophy, XCircle,
+  MessageSquarePlus, ChevronRight, Trophy, XCircle, Undo2,
 } from 'lucide-react';
 
 export default function OpportunityDetail() {
@@ -16,12 +16,14 @@ export default function OpportunityDetail() {
     opportunities, companies, contacts, activities,
     stageTransitions, qualificationChecks, inactivityFlags,
     salesStages, lossReasons, getUserName,
-    moveToStage, closeOpportunity,
+    moveToStage, closeOpportunity, pushbackStage, hasActivitySinceLastTransition,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState<'won' | 'lost' | null>(null);
   const [closeReasonId, setCloseReasonId] = useState<number | ''>('');
   const [closeNotes, setCloseNotes] = useState('');
+  const [pushbackOpen, setPushbackOpen] = useState(false);
+  const [pushbackReason, setPushbackReason] = useState('');
 
   const opp = opportunities.find(o => o.id === oppId);
   if (!opp) {
@@ -47,11 +49,22 @@ export default function OpportunityDetail() {
     ? Math.floor((Date.now() - new Date(lastTransition.created_at).getTime()) / 86400000)
     : Math.floor((Date.now() - new Date(opp.created_at).getTime()) / 86400000);
   const isClosed = !!opp.closed_at;
+  const hasActivity = hasActivitySinceLastTransition(opp.id);
+  const isAtVerbal = stage?.name === 'Verbal';
+  const isAtFirst = opp.stage_id === nonTerminalStages[0]?.id;
 
   const handleAdvance = () => {
+    if (!hasActivity) return;
     const currentOrder = stage?.stage_order || 0;
     const nextStage = nonTerminalStages.find(s => s.stage_order === currentOrder + 1);
     if (nextStage) moveToStage(opp.id, nextStage.id, 'Stage advanced manually.');
+  };
+
+  const handlePushback = async () => {
+    if (!pushbackReason) return;
+    await pushbackStage(opp.id, pushbackReason);
+    setPushbackOpen(false);
+    setPushbackReason('');
   };
 
   const handleClose = () => {
@@ -66,6 +79,8 @@ export default function OpportunityDetail() {
     setCloseReasonId('');
     setCloseNotes('');
   };
+
+  const isPushbackActivity = (notes: string | null) => notes?.startsWith('[PUSHBACK]');
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -83,12 +98,21 @@ export default function OpportunityDetail() {
               className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50 transition-colors">
               <MessageSquarePlus className="w-3 h-3" /> Log Activity
             </button>
-            <button onClick={handleAdvance}
-              className="flex items-center gap-1.5 text-[12px] text-white bg-violet-600 rounded-md px-2.5 py-1.5 hover:bg-violet-700 transition-colors font-medium">
-              <ChevronRight className="w-3 h-3" /> Advance Stage
+            {/* Push Back button */}
+            <button onClick={() => setPushbackOpen(true)} disabled={isAtFirst}
+              className="flex items-center gap-1.5 text-[12px] text-amber-600 border border-amber-200 rounded-md px-2.5 py-1.5 hover:bg-amber-50 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+              <Undo2 className="w-3 h-3" /> Push Back
             </button>
-            <button onClick={() => setShowCloseModal('won')}
-              className="flex items-center gap-1.5 text-[12px] text-white bg-emerald-600 rounded-md px-2.5 py-1.5 hover:bg-emerald-700 transition-colors font-medium">
+            {/* Advance - requires activity */}
+            <button onClick={handleAdvance} disabled={!hasActivity || isAtVerbal}
+              className="flex items-center gap-1.5 text-[12px] text-white bg-violet-600 rounded-md px-2.5 py-1.5 hover:bg-violet-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+              title={!hasActivity ? 'Log activity before advancing' : ''}>
+              <ChevronRight className="w-3 h-3" /> Advance Stage
+              {hasActivity && <span className="w-2 h-2 rounded-full bg-green-400 ml-1" />}
+            </button>
+            <button onClick={() => setShowCloseModal('won')} disabled={!isAtVerbal}
+              className="flex items-center gap-1.5 text-[12px] text-white bg-emerald-600 rounded-md px-2.5 py-1.5 hover:bg-emerald-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+              title={!isAtVerbal ? 'Must be at Verbal to mark Won' : ''}>
               <Trophy className="w-3 h-3" /> Mark Won
             </button>
             <button onClick={() => setShowCloseModal('lost')}
@@ -133,19 +157,30 @@ export default function OpportunityDetail() {
             </div>
           </div>
 
-          <div className="mt-5 flex items-center gap-1">
-            {nonTerminalStages.map(s => {
-              const isCurrent = s.id === opp.stage_id;
-              const isPast = s.stage_order < (stage?.stage_order || 0);
-              return (
-                <div key={s.id} className="flex-1">
-                  <div className={`h-1.5 rounded-full ${isCurrent ? 'bg-violet-500' : isPast ? 'bg-emerald-400' : 'bg-gray-200'}`} />
-                  <span className={`text-[10px] mt-1 block text-center ${isCurrent ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>
-                    {s.name}
-                  </span>
-                </div>
-              );
-            })}
+          {/* Stage progress bar with activity indicator */}
+          <div className="mt-5">
+            <div className="flex items-center gap-1">
+              {nonTerminalStages.map(s => {
+                const isCurrent = s.id === opp.stage_id;
+                const isPast = s.stage_order < (stage?.stage_order || 0);
+                return (
+                  <div key={s.id} className="flex-1">
+                    <div className={`h-1.5 rounded-full ${isCurrent ? 'bg-violet-500' : isPast ? 'bg-emerald-400' : 'bg-gray-200'}`} />
+                    <span className={`text-[10px] mt-1 block text-center ${isCurrent ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>
+                      {s.name}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {!isClosed && (
+              <div className="flex items-center gap-1.5 mt-2 text-[11px]">
+                <div className={`w-2 h-2 rounded-full ${hasActivity ? 'bg-green-400' : 'bg-gray-300'}`} />
+                <span className={hasActivity ? 'text-green-600' : 'text-gray-400'}>
+                  {hasActivity ? 'Activity logged - ready to advance' : 'Log activity to advance stage'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -175,10 +210,11 @@ export default function OpportunityDetail() {
                   {transitions.map(t => {
                     const from = t.from_stage_id ? salesStages.find(s => s.id === t.from_stage_id) : null;
                     const to = salesStages.find(s => s.id === t.to_stage_id);
+                    const isPushback = from && to && (from.stage_order || 0) > (to.stage_order || 0);
                     return (
-                      <div key={t.id} className="flex items-center gap-2 text-[12px]">
+                      <div key={t.id} className={`flex items-center gap-2 text-[12px] ${isPushback ? 'bg-amber-50 border border-amber-200 rounded-md px-2 py-1' : ''}`}>
                         {from && <span className="text-gray-500">{from.name}</span>}
-                        <ArrowRight className="w-3 h-3 text-gray-300" />
+                        <ArrowRight className={`w-3 h-3 ${isPushback ? 'text-amber-400' : 'text-gray-300'}`} />
                         <span className="font-medium text-gray-900">{to?.name}</span>
                         <span className="text-gray-300">&middot;</span>
                         <span className="text-gray-400">{getUserName(t.transitioned_by)}</span>
@@ -225,19 +261,24 @@ export default function OpportunityDetail() {
               {oppActivities.length === 0 ? (
                 <p className="text-[12px] text-gray-400 text-center py-4">No activities</p>
               ) : (
-                oppActivities.map(act => (
-                  <div key={act.id} className="flex gap-2.5">
-                    <StatusBadge status={act.activity_type} variant="tag" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] text-gray-700 leading-relaxed">{act.notes || '--'}</p>
-                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-gray-400">
-                        <span>{getUserName(act.logged_by)}</span>
-                        <span>&middot;</span>
-                        <span>{formatDateTime(act.activity_timestamp)}</span>
+                oppActivities.map(act => {
+                  const isPB = isPushbackActivity(act.notes);
+                  return (
+                    <div key={act.id} className={`flex gap-2.5 ${isPB ? 'bg-amber-50 border border-amber-200 rounded-md p-2' : ''}`}>
+                      <StatusBadge status={act.activity_type} variant="tag" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-gray-700 leading-relaxed">
+                          {isPB ? (act.notes || '').replace('[PUSHBACK] ', '') : (act.notes || '--')}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 text-[11px] text-gray-400">
+                          <span>{getUserName(act.logged_by)}</span>
+                          <span>&middot;</span>
+                          <span>{formatDateTime(act.activity_timestamp)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -247,6 +288,37 @@ export default function OpportunityDetail() {
       <ActivityLogModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)}
         defaultCompanyId={opp.company_id} defaultOpportunityId={opp.id} />
 
+      {/* Pushback modal */}
+      {pushbackOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setPushbackOpen(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-[400px]" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-[15px] font-semibold text-gray-900">Push Back Stage</h2>
+              <p className="text-[12px] text-gray-500 mt-1">This will move the deal back one stage and log the reason.</p>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-[12px] font-medium text-gray-500 mb-1">Reason</label>
+                <select value={pushbackReason} onChange={e => setPushbackReason(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                  <option value="">Select reason...</option>
+                  {PUSHBACK_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setPushbackOpen(false)}
+                  className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md transition-colors">Cancel</button>
+                <button onClick={handlePushback} disabled={!pushbackReason}
+                  className="px-3 py-1.5 text-[13px] text-white bg-amber-500 rounded-md hover:bg-amber-600 transition-colors font-medium disabled:opacity-40">
+                  Push Back
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Close (Won/Lost) modal */}
       {showCloseModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setShowCloseModal(null)}>
           <div className="bg-white rounded-lg shadow-xl w-[420px]" onClick={e => e.stopPropagation()}>
