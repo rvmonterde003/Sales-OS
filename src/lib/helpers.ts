@@ -53,7 +53,14 @@ export const ACTIVITY_TYPES = ['Call', 'Email', 'Meeting', 'Note', 'Prospecting 
 export const OPPORTUNITY_TYPES = ['New', 'Upsell', 'Renewal', 'Pilot'] as const;
 export const FORECAST_CATEGORIES = ['Pipeline', 'Best Case', 'Commit'] as const;
 export const COMPANY_STATUSES = ['Prospect', 'Customer', 'Former'] as const;
-export const LEAD_STATUSES = ['Lead', 'Sales Working Lead', 'Qualified'] as const;
+export const LEAD_STATUSES = ['MQL', 'SQL', 'Qualified', 'Unqualified'] as const;
+export const UNQUALIFY_REASONS = [
+  'Champion left',
+  'Technical issues',
+  'M&A at firm',
+  'Product issue',
+  'Partnership delays',
+] as const;
 export const CONTACT_ROLES = ['Decision Maker', 'Operations', 'Associate', 'Other'] as const;
 export const FIRM_SIZES = ['2-10', '11-50', '51-200', '200+'] as const;
 export const DEAL_SOURCES = ['Ad', 'Referral', 'Website', 'Newsletter', 'Cold Outreach', 'Other'] as const;

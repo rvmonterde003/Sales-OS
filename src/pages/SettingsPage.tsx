@@ -53,16 +53,16 @@ export default function SettingsPage() {
         {/* BANT + Loss Reasons */}
         <div className="grid grid-cols-2 gap-5 mb-6">
           <div className="border border-gray-200 rounded-lg p-4">
-            <h2 className="text-[13px] font-semibold text-gray-900 mb-3">BANT Qualification Criteria</h2>
+            <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Qualification Criteria</h2>
             <div className="space-y-2">
               {[
-                { label: 'Budget', desc: 'Has the prospect allocated or identified budget?' },
-                { label: 'Authority', desc: 'Is the contact a decision-maker or has access to one?' },
-                { label: 'Need', desc: 'Does the prospect have a clear business need?' },
-                { label: 'Timing', desc: 'Is there a defined timeline or trigger event?' },
+                { label: 'Pain & Value', desc: 'Has the prospect articulated their pain and can they see the value of the solution?' },
+                { label: 'Timeline', desc: 'Is there a defined timeline, trigger event, or urgency?' },
+                { label: 'Budget/Pricing', desc: 'Is there budget availability and does pricing fit their expectations?' },
+                { label: 'Person', desc: 'Is there a person in position with authority to make the decision?' },
               ].map(item => (
                 <div key={item.label} className="flex gap-3 p-2.5 bg-gray-50 rounded-md">
-                  <span className="text-[12px] font-semibold text-gray-900 w-16 shrink-0">{item.label}</span>
+                  <span className="text-[12px] font-semibold text-gray-900 w-24 shrink-0">{item.label}</span>
                   <span className="text-[12px] text-gray-500">{item.desc}</span>
                 </div>
               ))}

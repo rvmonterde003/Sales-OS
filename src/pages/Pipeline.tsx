@@ -10,7 +10,7 @@ export default function Pipeline() {
   const { opportunities, companies, contacts, salesStages, stageTransitions, moveToStage } = useData();
   const [dragOppId, setDragOppId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
-  const nonTerminalStages = salesStages.filter(s => s.name !== 'Closed Won' && s.name !== 'Closed Lost');
+  const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
 
   const handleDragStart = (oppId: number) => setDragOppId(oppId);
   const handleDragOver = (e: React.DragEvent, stageId: number) => { e.preventDefault(); setDropTarget(stageId); };

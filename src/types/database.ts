@@ -19,7 +19,8 @@ export interface DbCompany {
   firm_size: string | null;
   website: string | null;
   status: 'Prospect' | 'Customer' | 'Former';
-  lead_status: 'Lead' | 'Sales Working Lead' | 'Qualified';
+  lead_status: 'MQL' | 'SQL' | 'Qualified' | 'Unqualified';
+  unqualify_reason: string | null;
   owner_id: number;
   last_activity_at: string | null;
   created_at: string;
@@ -42,10 +43,10 @@ export interface DbContact {
 export interface DbQualificationCheck {
   id: number;
   company_id: number;
-  budget: boolean;
-  authority: boolean;
-  need: boolean;
-  timing: boolean;
+  pain_and_value: string;
+  timeline: string;
+  budget_pricing_fit: string;
+  person_in_position: string;
   qualified_at: string | null;
   qualified_by: number | null;
   created_at: string;
@@ -106,9 +107,11 @@ export interface DbStageTransition {
 export interface DbActivity {
   id: number;
   company_id: number;
+  contact_id: number | null;
   related_opportunity_id: number | null;
   activity_type: 'Call' | 'Email' | 'Meeting' | 'Note' | 'Prospecting Touch';
   notes: string | null;
+  attachments: { name: string; url: string; type: string }[];
   logged_by: number;
   activity_timestamp: string;
   created_at: string;
@@ -207,7 +210,8 @@ export interface Database {
           firm_size?: string | null;
           website?: string | null;
           status?: 'Prospect' | 'Customer' | 'Former';
-          lead_status?: 'Lead' | 'Sales Working Lead' | 'Qualified';
+          lead_status?: 'MQL' | 'SQL' | 'Qualified' | 'Unqualified';
+          unqualify_reason?: string | null;
           owner_id: number;
           last_activity_at?: string | null;
           created_at?: string;
@@ -220,7 +224,8 @@ export interface Database {
           firm_size?: string | null;
           website?: string | null;
           status?: 'Prospect' | 'Customer' | 'Former';
-          lead_status?: 'Lead' | 'Sales Working Lead' | 'Qualified';
+          lead_status?: 'MQL' | 'SQL' | 'Qualified' | 'Unqualified';
+          unqualify_reason?: string | null;
           owner_id?: number;
           last_activity_at?: string | null;
           created_at?: string;
@@ -261,10 +266,10 @@ export interface Database {
         Insert: {
           id?: number;
           company_id: number;
-          budget?: boolean;
-          authority?: boolean;
-          need?: boolean;
-          timing?: boolean;
+          pain_and_value?: string;
+          timeline?: string;
+          budget_pricing_fit?: string;
+          person_in_position?: string;
           qualified_at?: string | null;
           qualified_by?: number | null;
           created_at?: string;
@@ -273,10 +278,10 @@ export interface Database {
         Update: {
           id?: number;
           company_id?: number;
-          budget?: boolean;
-          authority?: boolean;
-          need?: boolean;
-          timing?: boolean;
+          pain_and_value?: string;
+          timeline?: string;
+          budget_pricing_fit?: string;
+          person_in_position?: string;
           qualified_at?: string | null;
           qualified_by?: number | null;
           created_at?: string;
@@ -399,9 +404,11 @@ export interface Database {
         Insert: {
           id?: number;
           company_id: number;
+          contact_id?: number | null;
           related_opportunity_id?: number | null;
           activity_type: 'Call' | 'Email' | 'Meeting' | 'Note' | 'Prospecting Touch';
           notes?: string | null;
+          attachments?: unknown;
           logged_by: number;
           activity_timestamp?: string;
           created_at?: string;
@@ -409,9 +416,11 @@ export interface Database {
         Update: {
           id?: number;
           company_id?: number;
+          contact_id?: number | null;
           related_opportunity_id?: number | null;
           activity_type?: 'Call' | 'Email' | 'Meeting' | 'Note' | 'Prospecting Touch';
           notes?: string | null;
+          attachments?: unknown;
           logged_by?: number;
           activity_timestamp?: string;
           created_at?: string;

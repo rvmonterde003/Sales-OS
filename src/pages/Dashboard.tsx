@@ -13,13 +13,13 @@ export default function Dashboard() {
   const { opportunities, companies, salesStages, stageTransitions, getUserName } = useData();
 
   const openOpps = opportunities.filter(o => !o.closed_at);
-  const wonStage = salesStages.find(s => s.name === 'Closed Won');
+  const wonStage = salesStages.find(s => s.name === 'Won');
   const wins = opportunities.filter(o => o.stage_id === wonStage?.id);
   const totalPipelineValue = openOpps.reduce((sum, o) => sum + o.deal_value, 0);
   const wonValue = wins.reduce((sum, o) => sum + o.deal_value, 0);
 
   // Pipeline by stage
-  const nonTerminalStages = salesStages.filter(s => s.name !== 'Closed Won' && s.name !== 'Closed Lost');
+  const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
   const pipelineByStage = nonTerminalStages.map(stage => {
     const stageOpps = openOpps.filter(o => o.stage_id === stage.id);
     return {

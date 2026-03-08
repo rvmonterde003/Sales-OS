@@ -26,13 +26,14 @@ interface DataContextType {
 
   // Mutations
   addCompany: (c: { name: string; industry?: string; firm_size?: string; website?: string; }) => Promise<DbCompany | null>;
+  updateCompanyLeadStatus: (companyId: number, status: DbCompany['lead_status'], unqualifyReason?: string) => Promise<void>;
   addContact: (c: { company_id: number; first_name: string; last_name: string; email?: string; phone?: string; title?: string; role?: string; }) => Promise<DbContact | null>;
-  addActivity: (a: { company_id: number; related_opportunity_id?: number | null; activity_type: string; notes?: string; activity_timestamp?: string; }) => Promise<void>;
+  addActivity: (a: { company_id: number; contact_id?: number | null; related_opportunity_id?: number | null; activity_type: string; notes?: string; activity_timestamp?: string; attachments?: { name: string; url: string; type: string }[]; }) => Promise<void>;
   addOpportunity: (o: { company_id: number; opportunity_type: string; service_description: string; deal_value: number; source: string; expected_close_date: string; primary_contact_id?: number | null; notes?: string; }) => Promise<DbOpportunity | null>;
   updateOpportunity: (id: number, fields: Partial<DbOpportunity>) => Promise<void>;
   moveToStage: (oppId: number, targetStageId: number, notes?: string) => Promise<boolean>;
   closeOpportunity: (oppId: number, won: boolean, reasonId?: number, notes?: string) => Promise<void>;
-  toggleQualification: (companyId: number, field: 'budget' | 'authority' | 'need' | 'timing') => Promise<void>;
+  updateQualification: (companyId: number, field: keyof Pick<DbQualificationCheck, 'pain_and_value' | 'timeline' | 'budget_pricing_fit' | 'person_in_position'>, value: string) => Promise<void>;
   resolveFlag: (flagId: number) => Promise<void>;
   refreshData: () => Promise<void>;
 }
@@ -112,7 +113,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       firm_size: c.firm_size || null,
       website: c.website || null,
       status: 'Prospect',
-      lead_status: 'Lead',
+      lead_status: 'MQL',
       owner_id: dbUser.id,
     }).select().single();
     if (!error && data) {
@@ -120,16 +121,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Create empty qualification check
       await supabase.from('qualification_checks').insert({
         company_id: data.id,
-        budget: false,
-        authority: false,
-        need: false,
-        timing: false,
+        pain_and_value: '',
+        timeline: '',
+        budget_pricing_fit: '',
+        person_in_position: '',
       });
       const { data: qcData } = await supabase.from('qualification_checks').select('*').eq('company_id', data.id).single();
       if (qcData) setQualificationChecks(prev => [...prev, qcData]);
     }
     return data ?? null;
   }, [dbUser]);
+
+  const updateCompanyLeadStatus = useCallback(async (companyId: number, status: DbCompany['lead_status'], unqualifyReason?: string) => {
+    const updates: Record<string, unknown> = { lead_status: status };
+    if (status === 'Unqualified' && unqualifyReason) {
+      updates.unqualify_reason = unqualifyReason;
+    } else {
+      updates.unqualify_reason = null;
+    }
+    const { error } = await supabase.from('companies').update(updates).eq('id', companyId);
+    if (!error) {
+      setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, lead_status: status, unqualify_reason: status === 'Unqualified' ? (unqualifyReason || null) : null } : c));
+    }
+  }, []);
 
   const addContact = useCallback(async (c: {
     company_id: number; first_name: string; last_name: string;
@@ -152,23 +166,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addActivity = useCallback(async (a: {
     company_id: number;
+    contact_id?: number | null;
     related_opportunity_id?: number | null;
     activity_type: string;
     notes?: string;
     activity_timestamp?: string;
+    attachments?: { name: string; url: string; type: string }[];
   }) => {
     if (!dbUser) return;
     const { data, error } = await supabase.from('activities').insert({
       company_id: a.company_id,
+      contact_id: a.contact_id ?? null,
       related_opportunity_id: a.related_opportunity_id ?? null,
       activity_type: a.activity_type as DbActivity['activity_type'],
       notes: a.notes || null,
+      attachments: a.attachments || [],
       logged_by: dbUser.id,
       activity_timestamp: a.activity_timestamp || new Date().toISOString(),
     }).select().single();
     if (!error && data) {
       setActivities(prev => [data, ...prev]);
-      // Update company last_activity_at locally (trigger does it in DB)
       setCompanies(prev => prev.map(c =>
         c.id === a.company_id ? { ...c, last_activity_at: data.activity_timestamp, updated_at: new Date().toISOString() } : c
       ));
@@ -181,7 +198,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     primary_contact_id?: number | null; notes?: string;
   }) => {
     if (!dbUser) return null;
-    // Find the first deal stage (Opportunity)
     const firstStage = salesStages.find(s => s.stage_order === 1);
     if (!firstStage) return null;
     const { data, error } = await supabase.from('opportunities').insert({
@@ -197,7 +213,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }).select().single();
     if (!error && data) {
       setOpportunities(prev => [data, ...prev]);
-      // Log initial stage transition
       const { data: tr } = await supabase.from('stage_transitions').insert({
         opportunity_id: data.id,
         from_stage_id: null,
@@ -206,9 +221,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         notes: 'Opportunity created.',
       }).select().single();
       if (tr) setStageTransitions(prev => [tr, ...prev]);
-      // Update company lead_status
-      await supabase.from('companies').update({ lead_status: 'Qualified' }).eq('id', o.company_id);
-      setCompanies(prev => prev.map(c => c.id === o.company_id ? { ...c, lead_status: 'Qualified' } : c));
     }
     return data ?? null;
   }, [dbUser, salesStages]);
@@ -246,7 +258,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const closeOpportunity = useCallback(async (oppId: number, won: boolean, reasonId?: number, notes?: string) => {
     if (!dbUser) return;
-    const targetStage = salesStages.find(s => s.name === (won ? 'Closed Won' : 'Closed Lost'));
+    const targetStage = salesStages.find(s => s.name === (won ? 'Won' : 'Loss'));
     if (!targetStage) return;
     const opp = opportunities.find(o => o.id === oppId);
     if (!opp) return;
@@ -280,25 +292,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, ...updateFields } : o));
     if (tr) setStageTransitions(prev => [tr, ...prev]);
 
-    // company status update handled by DB trigger
     if (won) {
       setCompanies(prev => prev.map(c => c.id === opp.company_id ? { ...c, status: 'Customer' } : c));
     }
   }, [dbUser, opportunities, salesStages]);
 
-  const toggleQualification = useCallback(async (companyId: number, field: 'budget' | 'authority' | 'need' | 'timing') => {
+  const updateQualification = useCallback(async (
+    companyId: number,
+    field: 'pain_and_value' | 'timeline' | 'budget_pricing_fit' | 'person_in_position',
+    value: string,
+  ) => {
     const existing = qualificationChecks.find(q => q.company_id === companyId);
     if (existing) {
-      const newVal = !existing[field];
       const { data } = await supabase.from('qualification_checks')
-        .update({ [field]: newVal })
+        .update({ [field]: value })
         .eq('company_id', companyId)
         .select()
         .single();
       if (data) {
         setQualificationChecks(prev => prev.map(q => q.company_id === companyId ? data : q));
-        // Update lead_status if needed
-        if (data.budget && data.authority && data.need && data.timing) {
+        // Check if all 4 fields are filled → auto-qualify
+        const allFilled = ['pain_and_value', 'timeline', 'budget_pricing_fit', 'person_in_position'].every(
+          f => f === field ? value.trim() !== '' : (existing[f as keyof typeof existing] as string || '').trim() !== ''
+        );
+        if (allFilled) {
           await supabase.from('companies').update({ lead_status: 'Qualified' }).eq('id', companyId);
           setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, lead_status: 'Qualified' } : c));
         }
@@ -306,10 +323,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } else {
       const { data } = await supabase.from('qualification_checks').insert({
         company_id: companyId,
-        budget: field === 'budget',
-        authority: field === 'authority',
-        need: field === 'need',
-        timing: field === 'timing',
+        [field]: value,
       }).select().single();
       if (data) setQualificationChecks(prev => [...prev, data]);
     }
@@ -335,9 +349,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       stageTransitions, qualificationChecks, inactivityFlags,
       salesStages, lossReasons, loading,
       getStageById, getUserName,
-      addCompany, addContact, addActivity, addOpportunity,
+      addCompany, updateCompanyLeadStatus, addContact, addActivity, addOpportunity,
       updateOpportunity, moveToStage, closeOpportunity,
-      toggleQualification, resolveFlag,
+      updateQualification, resolveFlag,
       refreshData: fetchAll,
     }}>
       {children}

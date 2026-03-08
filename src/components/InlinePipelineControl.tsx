@@ -9,15 +9,15 @@ interface Props {
 
 export default function InlinePipelineControl({ oppId, currentStageId, compact }: Props) {
   const { salesStages, moveToStage, closeOpportunity } = useData();
-  const nonTerminalStages = salesStages.filter(s => s.name !== 'Closed Won' && s.name !== 'Closed Lost');
+  const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
   const currentStage = salesStages.find(s => s.id === currentStageId);
-  const isTerminal = currentStage?.name === 'Closed Won' || currentStage?.name === 'Closed Lost';
+  const isTerminal = currentStage?.name === 'Won' || currentStage?.name === 'Loss';
 
   if (isTerminal) {
     return (
       <div className="flex items-center gap-1">
         <span className={`text-[11px] font-medium ${
-          currentStage?.name === 'Closed Won' ? 'text-green-600' : 'text-red-500'
+          currentStage?.name === 'Won' ? 'text-green-600' : 'text-red-500'
         }`}>
           {currentStage?.name}
         </span>
@@ -26,7 +26,7 @@ export default function InlinePipelineControl({ oppId, currentStageId, compact }
   }
 
   const currentOrder = currentStage?.stage_order || 0;
-  const isAtCommit = currentStage?.name === 'Commit';
+  const isAtVerbal = currentStage?.name === 'Verbal';
   const isAtFirst = currentStageId === nonTerminalStages[0]?.id;
   const isAtLast = currentStageId === nonTerminalStages[nonTerminalStages.length - 1]?.id;
 
@@ -88,9 +88,9 @@ export default function InlinePipelineControl({ oppId, currentStageId, compact }
         className="p-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors" title="Next stage">
         <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
       </button>
-      <button onClick={handleWon} disabled={!isAtCommit}
-        className={`p-0.5 rounded transition-colors ${isAtCommit ? 'hover:bg-green-50 text-green-600' : 'text-gray-300 cursor-not-allowed grayscale'}`}
-        title={isAtCommit ? 'Mark as Won' : 'Must be at Commit stage to win'}>
+      <button onClick={handleWon} disabled={!isAtVerbal}
+        className={`p-0.5 rounded transition-colors ${isAtVerbal ? 'hover:bg-green-50 text-green-600' : 'text-gray-300 cursor-not-allowed grayscale'}`}
+        title={isAtVerbal ? 'Mark as Won' : 'Must be at Verbal stage to win'}>
         <Trophy className="w-3.5 h-3.5" />
       </button>
       <button onClick={handleLost} className="p-0.5 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors" title="Mark as Lost">

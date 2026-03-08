@@ -36,7 +36,7 @@ export default function OpportunityDetail() {
   const company = companies.find(c => c.id === opp.company_id);
   const contact = opp.primary_contact_id ? contacts.find(c => c.id === opp.primary_contact_id) : null;
   const stage = salesStages.find(s => s.id === opp.stage_id);
-  const nonTerminalStages = salesStages.filter(s => s.name !== 'Closed Won' && s.name !== 'Closed Lost');
+  const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
   const oppActivities = activities.filter(a => a.company_id === opp.company_id && (a.related_opportunity_id === opp.id || a.related_opportunity_id === null));
   const transitions = stageTransitions.filter(t => t.opportunity_id === opp.id);
   const flags = inactivityFlags.filter(f => f.related_opportunity_id === opp.id && !f.resolved_at);
@@ -193,16 +193,25 @@ export default function OpportunityDetail() {
 
             {qualification && (
               <div className="px-5 py-4">
-                <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Qualification (BANT)</h2>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['budget', 'authority', 'need', 'timing'] as const).map(key => (
-                    <div key={key} className={`flex items-center gap-2 p-2 rounded-md border ${
-                      qualification[key] ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'
-                    }`}>
-                      {qualification[key] ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
-                      <span className={`text-[12px] font-medium capitalize ${qualification[key] ? 'text-emerald-700' : 'text-gray-400'}`}>{key}</span>
-                    </div>
-                  ))}
+                <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Qualification</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { key: 'pain_and_value' as const, label: 'Pain & Value' },
+                    { key: 'timeline' as const, label: 'Timeline' },
+                    { key: 'budget_pricing_fit' as const, label: 'Budget/Pricing Fit' },
+                    { key: 'person_in_position' as const, label: 'Person in Position' },
+                  ]).map(item => {
+                    const filled = (qualification[item.key] || '').trim() !== '';
+                    return (
+                      <div key={item.key} className={`p-2 rounded-md border ${filled ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {filled ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
+                          <span className={`text-[12px] font-medium ${filled ? 'text-emerald-700' : 'text-gray-400'}`}>{item.label}</span>
+                        </div>
+                        {filled && <p className="text-[11px] text-gray-600 ml-5">{qualification[item.key]}</p>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

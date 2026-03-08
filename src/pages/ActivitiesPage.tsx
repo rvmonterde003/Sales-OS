@@ -4,19 +4,21 @@ import { formatDateTime } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
 import ActivityLogModal from '../components/ActivityLogModal';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Paperclip } from 'lucide-react';
 
 export default function ActivitiesPage() {
-  const { activities, companies, getUserName } = useData();
+  const { activities, companies, contacts, getUserName } = useData();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [showLog, setShowLog] = useState(false);
 
   const filtered = activities.filter(a => {
     const company = companies.find(c => c.id === a.company_id);
+    const contact = a.contact_id ? contacts.find(c => c.id === a.contact_id) : null;
     const matchesSearch = !search ||
       (a.notes || '').toLowerCase().includes(search.toLowerCase()) ||
-      (company?.name || '').toLowerCase().includes(search.toLowerCase());
+      (company?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (contact ? `${contact.first_name} ${contact.last_name}`.toLowerCase().includes(search.toLowerCase()) : false);
     const matchesType = !typeFilter || a.activity_type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -52,14 +54,18 @@ export default function ActivitiesPage() {
             <tr className="border-b border-gray-200 bg-gray-50/60">
               <th className="text-left font-medium text-gray-500 px-4 py-2">Type</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2">Company</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 w-[40%]">Notes</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2">Contact</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 w-[35%]">Notes</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2">Logged by</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2">When</th>
+              <th className="text-center font-medium text-gray-500 px-4 py-2 w-8"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(act => {
               const company = companies.find(c => c.id === act.company_id);
+              const contact = act.contact_id ? contacts.find(c => c.id === act.contact_id) : null;
+              const attachments = (act.attachments || []) as { name: string; url: string; type: string }[];
               return (
                 <tr key={act.id} className="border-b border-gray-100">
                   <td className="px-4 py-2.5"><StatusBadge status={act.activity_type} variant="tag" /></td>
@@ -68,14 +74,28 @@ export default function ActivitiesPage() {
                       <Link to={`/companies/${company.id}`} className="text-gray-900 hover:text-violet-600 font-medium text-[12px]">{company.name}</Link>
                     ) : '--'}
                   </td>
+                  <td className="px-4 py-2.5 text-[12px]">
+                    {contact ? (
+                      <Link to={`/contacts/${contact.id}`} className="text-violet-600 hover:underline">
+                        {contact.first_name} {contact.last_name}
+                      </Link>
+                    ) : <span className="text-gray-300">--</span>}
+                  </td>
                   <td className="px-4 py-2.5 text-gray-600 text-[12px] truncate max-w-0">{act.notes || '--'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getUserName(act.logged_by)}</td>
                   <td className="px-4 py-2.5 text-gray-400 text-[12px] whitespace-nowrap">{formatDateTime(act.activity_timestamp)}</td>
+                  <td className="px-4 py-2.5 text-center">
+                    {attachments.length > 0 && (
+                      <span className="inline-flex items-center gap-0.5 text-[11px] text-gray-400" title={`${attachments.length} attachment(s)`}>
+                        <Paperclip className="w-3 h-3" />{attachments.length}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-[13px] text-gray-400">No activities found</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-[13px] text-gray-400">No activities found</td></tr>
             )}
           </tbody>
         </table>

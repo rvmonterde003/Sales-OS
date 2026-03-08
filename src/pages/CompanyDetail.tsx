@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge } from '../lib/helpers';
+import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, UNQUALIFY_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
 import InlinePipelineControl from '../components/InlinePipelineControl';
 import ActivityLogModal from '../components/ActivityLogModal';
 import AddContactModal from '../components/AddContactModal';
 import CreateOpportunityModal from '../components/CreateOpportunityModal';
-import { ArrowLeft, Globe, Plus, MessageSquarePlus, CheckCircle2, Circle, Briefcase } from 'lucide-react';
+import { ArrowLeft, Globe, Plus, MessageSquarePlus, Briefcase, FileText, Download, Paperclip } from 'lucide-react';
 
 export default function CompanyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -15,11 +15,13 @@ export default function CompanyDetail() {
   const {
     companies, contacts, opportunities, activities,
     qualificationChecks, inactivityFlags, stageTransitions,
-    salesStages, getUserName, toggleQualification,
+    salesStages, getUserName, updateQualification, updateCompanyLeadStatus,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showCreateOpp, setShowCreateOpp] = useState(false);
+  const [showUnqualifyModal, setShowUnqualifyModal] = useState(false);
+  const [unqualifyReason, setUnqualifyReason] = useState('');
 
   const company = companies.find(c => c.id === companyId);
   if (!company) {
@@ -34,21 +36,39 @@ export default function CompanyDetail() {
   const companyContacts = contacts.filter(c => c.company_id === company.id);
   const companyOpps = opportunities.filter(o => o.company_id === company.id);
   const openOpps = companyOpps.filter(o => !o.closed_at);
-  const companyActivities = activities.filter(a => a.company_id === company.id);
+  const companyActivities = activities
+    .filter(a => a.company_id === company.id)
+    .sort((a, b) => new Date(b.activity_timestamp).getTime() - new Date(a.activity_timestamp).getTime());
   const qualification = qualificationChecks.find(q => q.company_id === company.id);
   const flags = inactivityFlags.filter(f => f.company_id === company.id && !f.resolved_at);
 
-  const bantFields: Array<{ key: 'budget' | 'authority' | 'need' | 'timing'; label: string }> = [
-    { key: 'budget', label: 'Budget' },
-    { key: 'authority', label: 'Authority' },
-    { key: 'need', label: 'Need' },
-    { key: 'timing', label: 'Timing' },
+  const qualFields: Array<{ key: 'pain_and_value' | 'timeline' | 'budget_pricing_fit' | 'person_in_position'; label: string; placeholder: string }> = [
+    { key: 'pain_and_value', label: 'Prospect Articulated Pain & Value', placeholder: 'Describe how the prospect sees value...' },
+    { key: 'timeline', label: 'Timeline', placeholder: 'Expected timeline or trigger events...' },
+    { key: 'budget_pricing_fit', label: 'Budget / Pricing Fit', placeholder: 'Budget availability and pricing alignment...' },
+    { key: 'person_in_position', label: 'Person in Position', placeholder: 'Decision maker and their authority...' },
   ];
-  const bantScore = qualification ? bantFields.filter(f => qualification[f.key]).length : 0;
+  const bantScore = qualification ? qualFields.filter(f => (qualification[f.key] || '').trim() !== '').length : 0;
 
   const getDaysInStage = (oppId: number, createdAt: string) => {
     const t = stageTransitions.find(t => t.opportunity_id === oppId);
     return Math.floor((Date.now() - new Date(t?.created_at || createdAt).getTime()) / 86400000);
+  };
+
+  const handleLeadStatusAdvance = () => {
+    if (company.lead_status === 'MQL') {
+      updateCompanyLeadStatus(company.id, 'SQL');
+    } else if (company.lead_status === 'SQL' && bantScore === 4) {
+      updateCompanyLeadStatus(company.id, 'Qualified');
+    }
+  };
+
+  const handleUnqualify = () => {
+    if (unqualifyReason) {
+      updateCompanyLeadStatus(company.id, 'Unqualified', unqualifyReason);
+      setShowUnqualifyModal(false);
+      setUnqualifyReason('');
+    }
   };
 
   return (
@@ -67,7 +87,7 @@ export default function CompanyDetail() {
             className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
             <Plus className="w-3 h-3" /> Add Contact
           </button>
-          {bantScore === 4 && (
+          {bantScore === 4 && company.lead_status === 'Qualified' && (
             <button onClick={() => setShowCreateOpp(true)}
               className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
               <Briefcase className="w-3 h-3" /> Create Opportunity
@@ -104,6 +124,9 @@ export default function CompanyDetail() {
                       </span>
                     )}
                   </div>
+                  {company.lead_status === 'Unqualified' && company.unqualify_reason && (
+                    <div className="mt-1 text-[11px] text-red-600">Reason: {company.unqualify_reason}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -113,6 +136,47 @@ export default function CompanyDetail() {
             </div>
           </div>
         </div>
+
+        {/* Stage 0 Pipeline: MQL → SQL → Qualify/Unqualify */}
+        {company.lead_status !== 'Qualified' && company.lead_status !== 'Unqualified' && (
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Stage 0 Pipeline</h2>
+            <div className="flex items-center gap-2 mb-3">
+              {(['MQL', 'SQL', 'Qualified'] as const).map((step, i) => {
+                const isActive = step === company.lead_status;
+                const isPast = (step === 'MQL' && (company.lead_status === 'SQL' || company.lead_status === 'Qualified')) ||
+                               (step === 'SQL' && company.lead_status === 'Qualified');
+                return (
+                  <div key={step} className="flex items-center gap-2 flex-1">
+                    <div className={`flex-1 h-2 rounded-full ${isActive ? 'bg-violet-500' : isPast ? 'bg-emerald-400' : 'bg-gray-200'}`} />
+                    <span className={`text-[11px] ${isActive ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>{step}</span>
+                    {i < 2 && <span className="text-gray-300 text-[10px]">&rarr;</span>}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              {company.lead_status === 'MQL' && (
+                <button onClick={handleLeadStatusAdvance}
+                  className="text-[12px] bg-violet-600 text-white px-3 py-1.5 rounded-md hover:bg-violet-700 font-medium">
+                  Advance to SQL
+                </button>
+              )}
+              {company.lead_status === 'SQL' && (
+                <>
+                  <button onClick={handleLeadStatusAdvance} disabled={bantScore < 4}
+                    className="text-[12px] bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-40">
+                    Qualify {bantScore < 4 ? `(${bantScore}/4 BANT)` : ''}
+                  </button>
+                  <button onClick={() => setShowUnqualifyModal(true)}
+                    className="text-[12px] bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 font-medium">
+                    Unqualify
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Risk Flags */}
         {flags.length > 0 && (
@@ -164,32 +228,28 @@ export default function CompanyDetail() {
           )}
         </div>
 
-        {/* BANT Qualification */}
+        {/* Qualification (BANT) */}
         <div className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[13px] font-semibold text-gray-900">BANT Qualification</h2>
-            {qualification?.qualified_at && (
-              <span className="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
-                Qualified {formatDateTime(qualification.qualified_at)}
-              </span>
-            )}
+            <h2 className="text-[13px] font-semibold text-gray-900">Qualification (BANT)</h2>
+            <span className="text-[11px] text-gray-400">{bantScore}/4 completed</span>
           </div>
           <div className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
             <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(bantScore / 4) * 100}%` }} />
           </div>
-          <div className="grid grid-cols-4 gap-2">
-            {bantFields.map(item => {
-              const checked = qualification ? qualification[item.key] : false;
-              return (
-                <button key={item.key} onClick={() => toggleQualification(company.id, item.key)}
-                  className={`flex items-center gap-2 p-2.5 rounded-md border cursor-pointer transition-colors ${
-                    checked ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                  }`}>
-                  {checked ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Circle className="w-3.5 h-3.5 text-gray-300" />}
-                  <span className={`text-[12px] font-medium ${checked ? 'text-emerald-700' : 'text-gray-400'}`}>{item.label}</span>
-                </button>
-              );
-            })}
+          <div className="space-y-3">
+            {qualFields.map(item => (
+              <div key={item.key}>
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">{item.label}</label>
+                <textarea
+                  value={qualification?.[item.key] || ''}
+                  onChange={e => updateQualification(company.id, item.key, e.target.value)}
+                  placeholder={item.placeholder}
+                  rows={2}
+                  className="w-full border border-gray-200 rounded-md px-3 py-2 text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                />
+              </div>
+            ))}
           </div>
         </div>
 
@@ -282,19 +342,45 @@ export default function CompanyDetail() {
               {companyActivities.length === 0 ? (
                 <p className="text-[12px] text-gray-400 text-center py-4">No activities</p>
               ) : (
-                companyActivities.map(act => (
-                  <div key={act.id} className="flex gap-2.5">
-                    <StatusBadge status={act.activity_type} variant="tag" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[12px] text-gray-700 leading-relaxed">{act.notes || '--'}</p>
-                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-gray-400">
-                        <span>{getUserName(act.logged_by)}</span>
-                        <span>&middot;</span>
-                        <span>{formatDateTime(act.activity_timestamp)}</span>
+                companyActivities.map(act => {
+                  const actContact = act.contact_id ? contacts.find(c => c.id === act.contact_id) : null;
+                  const attachments = (act.attachments || []) as { name: string; url: string; type: string }[];
+                  return (
+                    <div key={act.id} className="flex gap-2.5">
+                      <StatusBadge status={act.activity_type} variant="tag" />
+                      <div className="flex-1 min-w-0">
+                        {actContact && (
+                          <Link to={`/contacts/${actContact.id}`} className="text-[11px] text-violet-600 hover:underline font-medium">
+                            {actContact.first_name} {actContact.last_name}
+                          </Link>
+                        )}
+                        <p className="text-[12px] text-gray-700 leading-relaxed">{act.notes || '--'}</p>
+                        {attachments.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {attachments.map((file, i) => (
+                              <a key={i} href={file.url} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[10px] bg-gray-100 text-gray-600 hover:text-violet-600 px-1.5 py-0.5 rounded">
+                                {file.type === 'link' ? <FileText className="w-2.5 h-2.5" /> : <Download className="w-2.5 h-2.5" />}
+                                {file.name}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-1 text-[11px] text-gray-400">
+                          <span>{getUserName(act.logged_by)}</span>
+                          <span>&middot;</span>
+                          <span>{formatDateTime(act.activity_timestamp)}</span>
+                          {attachments.length > 0 && (
+                            <>
+                              <span>&middot;</span>
+                              <span className="flex items-center gap-0.5"><Paperclip className="w-2.5 h-2.5" />{attachments.length}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -304,6 +390,35 @@ export default function CompanyDetail() {
       <ActivityLogModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)} defaultCompanyId={company.id} />
       <AddContactModal isOpen={showAddContact} onClose={() => setShowAddContact(false)} defaultCompanyId={company.id} />
       <CreateOpportunityModal isOpen={showCreateOpp} onClose={() => setShowCreateOpp(false)} companyId={company.id} />
+
+      {/* Unqualify Modal */}
+      {showUnqualifyModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setShowUnqualifyModal(false)}>
+          <div className="bg-white rounded-lg shadow-xl w-[400px]" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-[15px] font-semibold text-gray-900">Unqualify Company</h2>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-[12px] font-medium text-gray-500 mb-1">Reason *</label>
+                <select value={unqualifyReason} onChange={e => setUnqualifyReason(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                  <option value="">Select reason...</option>
+                  {UNQUALIFY_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowUnqualifyModal(false)}
+                  className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
+                <button onClick={handleUnqualify} disabled={!unqualifyReason}
+                  className="px-3 py-1.5 text-[13px] bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-40 font-medium">
+                  Confirm Unqualify
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
