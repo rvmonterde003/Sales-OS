@@ -19,7 +19,7 @@ export default function CompanyDetail() {
     companies, contacts, opportunities, activities,
     qualificationChecks, inactivityFlags, stageTransitions,
     salesStages, getUserName, saveQualification, updateCompanyLeadStatus,
-    moveToStage, pushbackStage, reopenOpportunity,
+    pushbackStage, reopenOpportunity,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
