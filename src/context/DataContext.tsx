@@ -17,7 +17,7 @@ interface DataContextType {
   inactivityFlags: DbInactivityFlag[];
   salesStages: DbSalesStage[];
   lossReasons: DbLossReason[];
-  /** All companies/opps/activities unfiltered — for total metrics (member sees totals) */
+  /** All companies/opps/activities unfiltered — for total metrics (exec sees totals) */
   allCompanies: DbCompany[];
   allOpportunities: DbOpportunity[];
   allActivities: DbActivity[];
@@ -94,12 +94,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Role-based filtering: reps see only their own data, admin/member see all
-  const role = dbUser?.role || 'member';
+  // Role-based filtering: reps see only their own data, exec/admin see all
+  const role = dbUser?.role || 'rep';
   const myId = dbUser?.id;
 
   const myCompanyIds = useMemo(() => {
-    if (role === 'admin' || role === 'member') return null; // null = no filter
+    if (role === 'exec' || role === 'admin') return null; // null = no filter
     return new Set(companies.filter(c => c.owner_id === myId).map(c => c.id));
   }, [companies, role, myId]);
 

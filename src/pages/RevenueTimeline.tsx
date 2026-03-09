@@ -12,15 +12,15 @@ type ViewMode = 'monthly' | 'yearly';
 export default function RevenueTimeline() {
   const { opportunities, allOpportunities, salesStages, getUserName } = useData();
   const { dbUser, allUsers } = useAuth();
-  const { isMember } = useRole();
+  const { isExec } = useRole();
 
-  // Members see total metrics; reps see own (already filtered); admin sees all
-  const baseOpps = isMember ? allOpportunities : opportunities;
+  // Exec sees total metrics; reps see own (already filtered); admin sees all
+  const baseOpps = isExec ? allOpportunities : opportunities;
 
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [filterUser, setFilterUser] = useState<string>('all');
 
-  const isAdmin = dbUser?.role === 'admin';
+  const isAdmin = dbUser?.role === 'admin' || dbUser?.role === 'exec';
 
   const wonStage = salesStages.find(s => s.name === 'Won');
   const wonOpps = useMemo(() => {

@@ -12,14 +12,15 @@ export default function ProfilePage() {
   const [pwSubmitting, setPwSubmitting] = useState(false);
 
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'rep' | 'member'>('rep');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'rep'>('rep');
   const [inviteMsg, setInviteMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [copiedToken, setCopiedToken] = useState<number | null>(null);
 
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
 
-  const isAdmin = dbUser?.role === 'admin';
+  const isExec = dbUser?.role === 'exec';
+  const isAdmin = dbUser?.role === 'admin' || isExec;
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +52,7 @@ export default function ProfilePage() {
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
-  const handleRoleChange = async (userId: number, role: 'admin' | 'rep' | 'member') => {
+  const handleRoleChange = async (userId: number, role: 'admin' | 'rep') => {
     await updateUserRole(userId, role);
   };
 
@@ -135,10 +136,10 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <label className="block text-[12px] font-medium text-gray-500 mb-1">Role</label>
-                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value as 'rep' | 'member')}
+                  <select value={inviteRole} onChange={e => setInviteRole(e.target.value as 'admin' | 'rep')}
                     className="border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent">
+                    {isExec && <option value="admin">Admin</option>}
                     <option value="rep">Rep</option>
-                    <option value="member">Member</option>
                   </select>
                 </div>
                 <button type="submit" disabled={inviteSubmitting}
@@ -196,19 +197,26 @@ export default function ProfilePage() {
                       <td className="px-3 py-2.5 font-medium text-gray-900">{user.first_name} {user.last_name}</td>
                       <td className="px-3 py-2.5 text-gray-500 text-[12px]">{user.email}</td>
                       <td className="px-3 py-2.5">
-                        {user.id === dbUser?.id ? (
-                          <StatusBadge status={user.role} variant="tag" />
-                        ) : (
-                          <select value={user.role} onChange={e => handleRoleChange(user.id, e.target.value as 'admin' | 'rep' | 'member')}
+                        {user.role === 'exec' || user.id === dbUser?.id ? (
+                          <StatusBadge status={user.role === 'exec' ? 'Exec' : user.role} variant="tag" />
+                        ) : isExec ? (
+                          <select value={user.role} onChange={e => handleRoleChange(user.id, e.target.value as 'admin' | 'rep')}
                             className="border border-gray-200 rounded px-2 py-0.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-violet-400">
                             <option value="admin">Admin</option>
                             <option value="rep">Rep</option>
-                            <option value="member">Member</option>
                           </select>
+                        ) : !isExec && user.role === 'rep' ? (
+                          <select value={user.role} onChange={e => handleRoleChange(user.id, e.target.value as 'admin' | 'rep')}
+                            className="border border-gray-200 rounded px-2 py-0.5 text-[12px] focus:outline-none focus:ring-1 focus:ring-violet-400">
+                            <option value="admin">Admin</option>
+                            <option value="rep">Rep</option>
+                          </select>
+                        ) : (
+                          <StatusBadge status={user.role} variant="tag" />
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-right">
-                        {user.id !== dbUser?.id && (
+                        {user.id !== dbUser?.id && user.role !== 'exec' && (isExec || user.role === 'rep') && (
                           confirmRemove === user.id ? (
                             <div className="flex items-center justify-end gap-1">
                               <button onClick={() => handleRemoveUser(user.id)}

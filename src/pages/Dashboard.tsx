@@ -11,12 +11,12 @@ const DONUT_COLORS = ['#ef4444', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#e
 
 export default function Dashboard() {
   const { opportunities, companies, activities, salesStages, allOpportunities, allCompanies, allActivities } = useData();
-  const { isMember } = useRole();
+  const { isExec } = useRole();
 
-  // Members see total metrics only; reps see their own (already filtered in context); admins see all
-  const displayOpps = isMember ? allOpportunities : opportunities;
-  const displayCompanies = isMember ? allCompanies : companies;
-  const displayActivities = isMember ? allActivities : activities;
+  // Exec sees total metrics; reps see their own (already filtered in context); admins see all
+  const displayOpps = isExec ? allOpportunities : opportunities;
+  const displayCompanies = isExec ? allCompanies : companies;
+  const displayActivities = isExec ? allActivities : activities;
   const [trackerYear, setTrackerYear] = useState(new Date().getFullYear());
 
   const openOpps = displayOpps.filter(o => !o.closed_at);

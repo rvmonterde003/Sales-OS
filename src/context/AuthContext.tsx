@@ -14,8 +14,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<string | null>;
   changePassword: (newPassword: string) => Promise<string | null>;
-  inviteUser: (email: string, role: 'admin' | 'rep' | 'member') => Promise<string | null>;
-  updateUserRole: (userId: number, role: 'admin' | 'rep' | 'member') => Promise<string | null>;
+  inviteUser: (email: string, role: 'admin' | 'rep') => Promise<string | null>;
+  updateUserRole: (userId: number, role: 'admin' | 'rep') => Promise<string | null>;
   removeUser: (userId: number) => Promise<string | null>;
   refreshUsers: () => Promise<void>;
 }
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error ? error.message : null;
   }, []);
 
-  const inviteUser = useCallback(async (email: string, role: 'admin' | 'rep' | 'member'): Promise<string | null> => {
+  const inviteUser = useCallback(async (email: string, role: 'admin' | 'rep'): Promise<string | null> => {
     if (!dbUser) return 'Not authenticated';
     // Check if already invited or already a user
     const { data: existing } = await supabase
@@ -191,19 +191,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, [dbUser, fetchInvitations]);
 
-  const updateUserRole = useCallback(async (userId: number, role: 'admin' | 'rep' | 'member'): Promise<string | null> => {
+  const updateUserRole = useCallback(async (userId: number, role: 'admin' | 'rep'): Promise<string | null> => {
+    // Protect exec from role changes
+    const target = allUsers.find(u => u.id === userId);
+    if (target?.role === 'exec') return 'Cannot change the exec role.';
     const { error } = await supabase.from('users').update({ role }).eq('id', userId);
     if (error) return error.message;
     setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
     return null;
-  }, []);
+  }, [allUsers]);
 
   const removeUser = useCallback(async (userId: number): Promise<string | null> => {
+    // Protect exec from removal
+    const target = allUsers.find(u => u.id === userId);
+    if (target?.role === 'exec') return 'Cannot remove the exec account.';
     const { error } = await supabase.from('users').update({ is_active: false }).eq('id', userId);
     if (error) return error.message;
     setAllUsers(prev => prev.filter(u => u.id !== userId));
     return null;
-  }, []);
+  }, [allUsers]);
 
   const refreshUsers = useCallback(async () => {
     await fetchAllUsers();

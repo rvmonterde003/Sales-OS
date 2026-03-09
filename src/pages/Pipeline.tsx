@@ -10,7 +10,7 @@ import { Clock, User, SlidersHorizontal, Filter, GripVertical } from 'lucide-rea
 
 export default function Pipeline() {
   const { opportunities, companies, contacts, salesStages, stageTransitions, moveToStage } = useData();
-  const { isMember, canEdit } = useRole();
+  const { canEdit } = useRole();
   const [dragOppId, setDragOppId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const [pendingMove, setPendingMove] = useState<{ oppId: number; targetStageId: number } | null>(null);
@@ -97,8 +97,8 @@ export default function Pipeline() {
                     const isDragging = dragOppId === opp.id;
 
                     return (
-                      <div key={opp.id} draggable={!isMember && canEdit(opp.owner_id)} onDragStart={() => handleDragStart(opp.id)} onDragEnd={handleDragEnd}
-                        className={`kanban-card bg-white rounded-lg border border-gray-200 p-3 ${!isMember && canEdit(opp.owner_id) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} transition-opacity ${isDragging ? 'opacity-40' : ''}`}>
+                      <div key={opp.id} draggable={canEdit(opp.owner_id)} onDragStart={() => handleDragStart(opp.id)} onDragEnd={handleDragEnd}
+                        className={`kanban-card bg-white rounded-lg border border-gray-200 p-3 ${canEdit(opp.owner_id) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} transition-opacity ${isDragging ? 'opacity-40' : ''}`}>
                         <div className="flex items-start justify-between mb-1">
                           <Link to={`/opportunities/${opp.id}`} className="text-[12px] font-medium text-gray-900 hover:text-violet-600">
                             {company?.name}
@@ -111,7 +111,7 @@ export default function Pipeline() {
                           {opp.forecast_category && <StatusBadge status={opp.forecast_category} variant="tag" />}
                           <StatusBadge status={opp.opportunity_type} variant="tag" />
                         </div>
-                        {!isMember && canEdit(opp.owner_id) && (
+                        {canEdit(opp.owner_id) && (
                           <div className="mb-2">
                             <InlinePipelineControl oppId={opp.id} currentStageId={opp.stage_id} compact />
                           </div>

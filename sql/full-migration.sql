@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL DEFAULT '',
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'rep', 'member')),
+  role TEXT NOT NULL DEFAULT 'rep' CHECK (role IN ('exec', 'admin', 'rep')),
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS invitations (
   id SERIAL PRIMARY KEY,
   email TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'rep', 'member')),
+  role TEXT NOT NULL DEFAULT 'rep' CHECK (role IN ('exec', 'admin', 'rep')),
   token UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
   invited_by INTEGER NOT NULL REFERENCES users(id),
   accepted_at TIMESTAMPTZ,
@@ -349,10 +349,45 @@ ORDER BY o.closed_at DESC;
 -- ────────────────────────────────────────────────────────────
 
 -- INSERT INTO users (email, password_hash, first_name, last_name, role, is_active)
--- VALUES ('your-admin@email.com', '', 'Admin', 'User', 'admin', true);
+-- VALUES ('your-admin@email.com', '', 'Admin', 'User', 'exec', true);
 
 -- ────────────────────────────────────────────────────────────
--- 7. SUPABASE AUTH SETTINGS (do these in Supabase Dashboard)
+-- 7. ROLE SYSTEM
+-- ────────────────────────────────────────────────────────────
+--
+-- Roles: exec | admin | rep
+--   exec  = Super admin. Only ONE. Cannot be demoted or deleted.
+--           Full access to everything including user management.
+--   admin = Can manage reps (change role, remove). Can do everything reps can.
+--           Cannot change other admins' roles or remove them.
+--   rep   = Can only see/edit their own data (companies they own, etc.).
+--
+-- The first user you insert should be role = 'exec'.
+-- All subsequent users invited through the app get 'admin' or 'rep'.
+--
+
+-- ────────────────────────────────────────────────────────────
+-- 8. TRUNCATE ALL TABLES & RESET IDs
+-- Run this ONLY if you need to wipe all data and start fresh.
+-- Uncomment the block below and run it separately.
+-- ────────────────────────────────────────────────────────────
+
+-- TRUNCATE
+--   inactivity_flags,
+--   activities,
+--   stage_transitions,
+--   opportunities,
+--   qualification_checks,
+--   contacts,
+--   companies,
+--   invitations,
+--   users,
+--   loss_reasons,
+--   sales_stages
+-- RESTART IDENTITY CASCADE;
+
+-- ────────────────────────────────────────────────────────────
+-- 9. SUPABASE AUTH SETTINGS (do these in Supabase Dashboard)
 -- ────────────────────────────────────────────────────────────
 --
 -- Go to: Authentication > URL Configuration

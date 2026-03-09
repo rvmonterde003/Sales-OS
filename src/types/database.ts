@@ -6,7 +6,7 @@ export interface DbUser {
   password_hash: string;
   first_name: string;
   last_name: string;
-  role: 'admin' | 'rep' | 'member';
+  role: 'exec' | 'admin' | 'rep';
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -15,7 +15,7 @@ export interface DbUser {
 export interface DbInvitation {
   id: number;
   email: string;
-  role: 'admin' | 'rep' | 'member';
+  role: 'exec' | 'admin' | 'rep';
   token: string;
   invited_by: number;
   accepted_at: string | null;
@@ -195,7 +195,7 @@ export interface Database {
           password_hash: string;
           first_name: string;
           last_name: string;
-          role?: 'admin' | 'rep' | 'member';
+          role?: 'exec' | 'admin' | 'rep';
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -206,7 +206,7 @@ export interface Database {
           password_hash?: string;
           first_name?: string;
           last_name?: string;
-          role?: 'admin' | 'rep' | 'member';
+          role?: 'exec' | 'admin' | 'rep';
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
