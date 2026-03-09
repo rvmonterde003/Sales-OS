@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, UNQUALIFY_REASONS, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
@@ -9,7 +8,7 @@ import AddContactModal from '../components/AddContactModal';
 import CreateOpportunityModal from '../components/CreateOpportunityModal';
 import {
   ArrowLeft, Globe, Plus, MessageSquarePlus, Briefcase,
-  FileText, Download, Paperclip, ChevronRight, ChevronLeft, Save, Linkedin,
+  FileText, Download, Paperclip, Save, Linkedin,
 } from 'lucide-react';
 
 export default function CompanyDetail() {
@@ -20,7 +19,7 @@ export default function CompanyDetail() {
     companies, contacts, opportunities, activities,
     qualificationChecks, inactivityFlags, stageTransitions,
     salesStages, getUserName, saveQualification, updateCompanyLeadStatus,
-    moveToStage, pushbackStage, hasActivitySinceLastTransition, reopenOpportunity,
+    moveToStage, pushbackStage, reopenOpportunity,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
@@ -100,15 +99,6 @@ export default function CompanyDetail() {
       setUnqualifyReason('');
       setUnqualifyOther('');
     }
-  };
-
-  const handleAdvanceStage = (oppId: number) => {
-    const opp = opportunities.find(o => o.id === oppId);
-    if (!opp) return;
-    const currentStage = salesStages.find(s => s.id === opp.stage_id);
-    if (!currentStage) return;
-    const nextStage = nonTerminalStages.find(s => s.stage_order === currentStage.stage_order + 1);
-    if (nextStage) moveToStage(oppId, nextStage.id, 'Stage advanced.');
   };
 
   const handlePushback = async () => {
