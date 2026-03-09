@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Scale } from 'lucide-react';
+import { Scale, CheckCircle2, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 function extractTokenFromURL(): string {
@@ -30,6 +30,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
 
   // Clean up URL after extracting token (so refreshing doesn't keep showing it)
   useEffect(() => {
@@ -55,7 +57,13 @@ export default function LoginPage() {
     if (mode === 'signup') {
       if (!inviteToken.trim()) { setError('Invite token is required to sign up.'); setSubmitting(false); return; }
       const err = await signup(email, password, firstName, lastName, inviteToken.trim());
-      if (err) setError(err);
+      if (err) {
+        setError(err);
+      } else {
+        // Show confirmation popup
+        setConfirmEmail(email);
+        setShowConfirmPopup(true);
+      }
       setSubmitting(false);
       return;
     }
@@ -168,6 +176,40 @@ export default function LoginPage() {
 
         <p className="text-[11px] text-gray-400 text-center mt-4">Sales Operating System</p>
       </div>
+
+      {/* Email Confirmation Popup */}
+      {showConfirmPopup && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200]" onClick={() => setShowConfirmPopup(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-[420px] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-indigo-500 to-violet-500 px-6 py-8 text-center">
+              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+                <Mail className="w-7 h-7 text-white" />
+              </div>
+              <h2 className="text-[18px] font-bold text-white">Check your email</h2>
+            </div>
+            <div className="px-6 py-5 text-center">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                <span className="text-[14px] font-medium text-gray-900">Account created successfully!</span>
+              </div>
+              <p className="text-[13px] text-gray-600 mb-2">
+                A confirmation email has been sent to:
+              </p>
+              <p className="text-[14px] font-semibold text-indigo-600 mb-4">
+                {confirmEmail}
+              </p>
+              <p className="text-[12px] text-gray-500 mb-5">
+                Please click the confirmation link in the email to activate your account. You can then sign in with your credentials.
+              </p>
+              <button
+                onClick={() => { setShowConfirmPopup(false); switchMode('login'); }}
+                className="w-full py-2.5 bg-violet-600 text-white text-[14px] font-medium rounded-lg hover:bg-violet-700 transition-colors">
+                Got it, go to Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
