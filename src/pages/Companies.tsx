@@ -2,12 +2,14 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { timeAgo, COMPANY_STATUSES, LEAD_STATUSES, DEAL_SOURCES } from '../lib/helpers';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import AddCompanyModal from '../components/AddCompanyModal';
 import { Search, Plus, SlidersHorizontal } from 'lucide-react';
 
 export default function Companies() {
   const { companies, contacts, opportunities, getUserName } = useData();
+  const { canCreate, canSeeRepData } = useRole();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all');
@@ -53,10 +55,12 @@ export default function Companies() {
             <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
               className="pl-7 pr-3 py-1.5 border border-gray-200 rounded-md text-[12px] w-48 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400" />
           </div>
-          <button onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> New Law Firm
-          </button>
+          {canCreate && (
+            <button onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> New Law Firm
+            </button>
+          )}
         </div>
       </div>
 
@@ -108,7 +112,7 @@ export default function Companies() {
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Last Activity</th>
               <th className="text-center font-medium text-gray-500 px-4 py-2 whitespace-nowrap"># Contacts</th>
               <th className="text-center font-medium text-gray-500 px-4 py-2 whitespace-nowrap"># Deals</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Owner</th>
+              {canSeeRepData && <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Owner</th>}
             </tr>
           </thead>
           <tbody>
@@ -129,12 +133,12 @@ export default function Companies() {
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{timeAgo(company.last_activity_at)}</td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{companyContacts.length || ''}</td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{openDeals.length || ''}</td>
-                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getUserName(company.owner_id)}</td>
+                  {canSeeRepData && <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getUserName(company.owner_id)}</td>}
                 </tr>
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={11} className="px-4 py-8 text-center text-[13px] text-gray-400">No law firms found</td></tr>
+              <tr><td colSpan={canSeeRepData ? 11 : 10} className="px-4 py-8 text-center text-[13px] text-gray-400">No law firms found</td></tr>
             )}
           </tbody>
         </table>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { formatCurrency, formatDate, formatDateTime, getDealAge, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import ActivityLogModal from '../components/ActivityLogModal';
 import {
@@ -26,6 +27,7 @@ export default function OpportunityDetail() {
   const [pushbackOpen, setPushbackOpen] = useState(false);
   const [pushbackReason, setPushbackReason] = useState('');
 
+  const { canEdit } = useRole();
   const opp = opportunities.find(o => o.id === oppId);
   if (!opp) {
     return (
@@ -36,6 +38,7 @@ export default function OpportunityDetail() {
     );
   }
 
+  const canEditThis = canEdit(opp.owner_id);
   const company = companies.find(c => c.id === opp.company_id);
   const contact = opp.primary_contact_id ? contacts.find(c => c.id === opp.primary_contact_id) : null;
   const stage = salesStages.find(s => s.id === opp.stage_id);
@@ -104,29 +107,33 @@ export default function OpportunityDetail() {
           <span className="text-[12px] text-gray-900 font-medium">{company?.name}</span>
         </div>
         {!isClosed ? (
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowActivityModal(true)}
-              className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50 transition-colors">
-              <MessageSquarePlus className="w-3 h-3" /> Log Activity
-            </button>
-            <button onClick={() => setPushbackOpen(true)} disabled={isAtFirst}
-              className="flex items-center gap-1.5 text-[12px] text-amber-600 border border-amber-200 rounded-md px-2.5 py-1.5 hover:bg-amber-50 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-              <Undo2 className="w-3 h-3" /> Push Back
-            </button>
-            <button onClick={handleAdvance} disabled={isAtVerbal}
-              className="flex items-center gap-1.5 text-[12px] text-white bg-violet-600 rounded-md px-2.5 py-1.5 hover:bg-violet-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-              <ChevronRight className="w-3 h-3" /> Advance Stage
-            </button>
-            <button onClick={() => setShowCloseModal('won')} disabled={!isAtVerbal}
-              className="flex items-center gap-1.5 text-[12px] text-white bg-emerald-600 rounded-md px-2.5 py-1.5 hover:bg-emerald-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-              title={!isAtVerbal ? 'Must be at Verbal to mark Won' : ''}>
-              <Trophy className="w-3 h-3" /> Mark Won
-            </button>
-            <button onClick={() => setShowCloseModal('lost')}
-              className="flex items-center gap-1.5 text-[12px] text-white bg-red-500 rounded-md px-2.5 py-1.5 hover:bg-red-600 transition-colors font-medium">
-              <XCircle className="w-3 h-3" /> Mark Lost
-            </button>
-          </div>
+          canEditThis ? (
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowActivityModal(true)}
+                className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50 transition-colors">
+                <MessageSquarePlus className="w-3 h-3" /> Log Activity
+              </button>
+              <button onClick={() => setPushbackOpen(true)} disabled={isAtFirst}
+                className="flex items-center gap-1.5 text-[12px] text-amber-600 border border-amber-200 rounded-md px-2.5 py-1.5 hover:bg-amber-50 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+                <Undo2 className="w-3 h-3" /> Push Back
+              </button>
+              <button onClick={handleAdvance} disabled={isAtVerbal}
+                className="flex items-center gap-1.5 text-[12px] text-white bg-violet-600 rounded-md px-2.5 py-1.5 hover:bg-violet-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+                <ChevronRight className="w-3 h-3" /> Advance Stage
+              </button>
+              <button onClick={() => setShowCloseModal('won')} disabled={!isAtVerbal}
+                className="flex items-center gap-1.5 text-[12px] text-white bg-emerald-600 rounded-md px-2.5 py-1.5 hover:bg-emerald-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                title={!isAtVerbal ? 'Must be at Verbal to mark Won' : ''}>
+                <Trophy className="w-3 h-3" /> Mark Won
+              </button>
+              <button onClick={() => setShowCloseModal('lost')}
+                className="flex items-center gap-1.5 text-[12px] text-white bg-red-500 rounded-md px-2.5 py-1.5 hover:bg-red-600 transition-colors font-medium">
+                <XCircle className="w-3 h-3" /> Mark Lost
+              </button>
+            </div>
+          ) : (
+            <span className="text-[12px] text-gray-400">View only</span>
+          )
         ) : (
           <div className="flex items-center gap-2">
             <span className={`text-[12px] font-medium px-2.5 py-1.5 rounded-md ${
@@ -134,7 +141,7 @@ export default function OpportunityDetail() {
             }`}>
               Opportunity Closed ({stage?.name})
             </span>
-            {stage?.name === 'Loss' && (
+            {stage?.name === 'Loss' && canEditThis && (
               <button onClick={() => reopenOpportunity(opp.id)}
                 className="flex items-center gap-1.5 text-[12px] text-violet-600 border border-violet-200 rounded-md px-2.5 py-1.5 hover:bg-violet-50 transition-colors font-medium">
                 <RotateCcw className="w-3 h-3" /> Reopen

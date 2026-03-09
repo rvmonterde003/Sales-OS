@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import AddContactModal from '../components/AddContactModal';
 import { Search, Plus, SlidersHorizontal, Linkedin } from 'lucide-react';
 
 export default function Contacts() {
   const { contacts, companies } = useData();
+  const { canCreate } = useRole();
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [roleFilter, setRoleFilter] = useState('');
@@ -52,10 +54,12 @@ export default function Contacts() {
               {roles.map(r => <option key={r!} value={r!}>{r}</option>)}
             </select>
           )}
-          <button onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> New Person
-          </button>
+          {canCreate && (
+            <button onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> New Person
+            </button>
+          )}
         </div>
       </div>
 

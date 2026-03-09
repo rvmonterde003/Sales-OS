@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatCurrency } from '../lib/helpers';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import InlinePipelineControl from '../components/InlinePipelineControl';
 import ActivityLogModal from '../components/ActivityLogModal';
@@ -9,6 +10,7 @@ import { Clock, User, SlidersHorizontal, Filter, GripVertical } from 'lucide-rea
 
 export default function Pipeline() {
   const { opportunities, companies, contacts, salesStages, stageTransitions, moveToStage } = useData();
+  const { isMember, canEdit } = useRole();
   const [dragOppId, setDragOppId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const [pendingMove, setPendingMove] = useState<{ oppId: number; targetStageId: number } | null>(null);
@@ -95,8 +97,8 @@ export default function Pipeline() {
                     const isDragging = dragOppId === opp.id;
 
                     return (
-                      <div key={opp.id} draggable onDragStart={() => handleDragStart(opp.id)} onDragEnd={handleDragEnd}
-                        className={`kanban-card bg-white rounded-lg border border-gray-200 p-3 cursor-grab active:cursor-grabbing transition-opacity ${isDragging ? 'opacity-40' : ''}`}>
+                      <div key={opp.id} draggable={!isMember && canEdit(opp.owner_id)} onDragStart={() => handleDragStart(opp.id)} onDragEnd={handleDragEnd}
+                        className={`kanban-card bg-white rounded-lg border border-gray-200 p-3 ${!isMember && canEdit(opp.owner_id) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} transition-opacity ${isDragging ? 'opacity-40' : ''}`}>
                         <div className="flex items-start justify-between mb-1">
                           <Link to={`/opportunities/${opp.id}`} className="text-[12px] font-medium text-gray-900 hover:text-violet-600">
                             {company?.name}
@@ -109,9 +111,11 @@ export default function Pipeline() {
                           {opp.forecast_category && <StatusBadge status={opp.forecast_category} variant="tag" />}
                           <StatusBadge status={opp.opportunity_type} variant="tag" />
                         </div>
-                        <div className="mb-2">
-                          <InlinePipelineControl oppId={opp.id} currentStageId={opp.stage_id} compact />
-                        </div>
+                        {!isMember && canEdit(opp.owner_id) && (
+                          <div className="mb-2">
+                            <InlinePipelineControl oppId={opp.id} currentStageId={opp.stage_id} compact />
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-gray-100">
                           <span className="flex items-center gap-1">
                             <User className="w-3 h-3" />

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { formatCurrency } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { useRole } from '../hooks/useRole';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -9,22 +10,26 @@ import {
 type ViewMode = 'monthly' | 'yearly';
 
 export default function RevenueTimeline() {
-  const { opportunities, salesStages, getUserName } = useData();
+  const { opportunities, allOpportunities, salesStages, getUserName } = useData();
   const { dbUser, allUsers } = useAuth();
+  const { isMember } = useRole();
+
+  // Members see total metrics; reps see own (already filtered); admin sees all
+  const baseOpps = isMember ? allOpportunities : opportunities;
 
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [filterUser, setFilterUser] = useState<string>('all');
 
-  const isAdmin = dbUser?.role === 'admin' || dbUser?.role === 'executive' || dbUser?.role === 'manager';
+  const isAdmin = dbUser?.role === 'admin';
 
   const wonStage = salesStages.find(s => s.name === 'Won');
   const wonOpps = useMemo(() => {
-    let opps = opportunities.filter(o => o.stage_id === wonStage?.id && o.closed_at);
+    let opps = baseOpps.filter(o => o.stage_id === wonStage?.id && o.closed_at);
     if (filterUser !== 'all') {
       opps = opps.filter(o => o.owner_id === Number(filterUser));
     }
     return opps;
-  }, [opportunities, wonStage, filterUser]);
+  }, [baseOpps, wonStage, filterUser]);
 
   const chartData = useMemo(() => {
     if (viewMode === 'monthly') {

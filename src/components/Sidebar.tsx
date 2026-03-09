@@ -5,7 +5,6 @@ import {
   Building2,
   Users,
   AlertTriangle,
-  Settings,
   Scale,
   ChevronDown,
   BarChart3,
@@ -41,7 +40,7 @@ export default function Sidebar() {
   return (
     <>
       <aside className="fixed left-0 top-0 bottom-0 w-[232px] bg-white border-r border-gray-200 flex flex-col z-50 select-none">
-        {/* Logo / Workspace */}
+        {/* Logo */}
         <div className="px-3 pt-3 pb-1">
           <div className="flex items-center gap-2 px-2 py-1.5">
             <div className="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center">
@@ -52,9 +51,8 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Main nav scroll area */}
+        {/* Nav */}
         <div className="flex-1 overflow-y-auto px-3 pb-3">
-          {/* Top nav items */}
           <div className="space-y-0.5 pb-3">
             <SidebarLink to="/" icon={BarChart3} label="Business Metrics" active={isActive('/')} end />
             <SidebarLink to="/revenue" icon={TrendingUp} label="Revenue Timeline" active={isActive('/revenue')} />
@@ -62,7 +60,6 @@ export default function Sidebar() {
             <SidebarLink to="/risk-flags" icon={AlertTriangle} label="Risk Flags" active={isActive('/risk-flags')} />
           </div>
 
-          {/* Records */}
           <div className="pb-3">
             <div className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-400 uppercase tracking-wider">
               <ChevronDown className="w-3 h-3" />
@@ -87,26 +84,18 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* Footer: Settings + Profile */}
-        <div className="px-3 py-3 border-t border-gray-100 space-y-1">
-          <NavLink
-            to="/settings"
-            className={`sidebar-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] ${
-              isActive('/settings') ? 'active font-medium' : 'text-gray-500'
-            }`}
-          >
-            <Settings className="w-3.5 h-3.5" />
-            Settings
-          </NavLink>
-
+        {/* Footer: Profile */}
+        <div className="px-3 py-3 border-t border-gray-100">
           <div className="flex items-center gap-2 px-2 py-1.5">
-            <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center text-[10px] font-semibold text-violet-700 shrink-0">
-              {initials}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12px] font-medium text-gray-900 truncate">{dbUser?.first_name} {dbUser?.last_name}</div>
-              <div className="text-[10px] text-gray-400 truncate">{dbUser?.email}</div>
-            </div>
+            <NavLink to="/profile" className="flex items-center gap-2 flex-1 min-w-0 rounded-md hover:bg-gray-50 -mx-1 px-1 py-0.5 transition-colors">
+              <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center text-[10px] font-semibold text-violet-700 shrink-0">
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-medium text-gray-900 truncate">{dbUser?.first_name} {dbUser?.last_name}</div>
+                <div className="text-[10px] text-gray-400 truncate">{dbUser?.email}</div>
+              </div>
+            </NavLink>
             <button
               onClick={() => setShowLogoutConfirm(true)}
               className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors shrink-0"
@@ -118,7 +107,6 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* Logout confirmation modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200]" onClick={() => setShowLogoutConfirm(false)}>
           <div className="bg-white rounded-lg shadow-xl w-[340px]" onClick={e => e.stopPropagation()}>
@@ -128,13 +116,9 @@ export default function Sidebar() {
             </div>
             <div className="flex justify-end gap-2 p-4">
               <button onClick={() => setShowLogoutConfirm(false)}
-                className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
-                Cancel
-              </button>
+                className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md transition-colors">Cancel</button>
               <button onClick={handleLogout}
-                className="px-3 py-1.5 text-[13px] text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors font-medium">
-                Sign out
-              </button>
+                className="px-3 py-1.5 text-[13px] text-white bg-red-500 rounded-md hover:bg-red-600 transition-colors font-medium">Sign out</button>
             </div>
           </div>
         </div>

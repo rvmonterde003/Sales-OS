@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDateTime } from '../lib/helpers';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import ActivityLogModal from '../components/ActivityLogModal';
 import { ArrowUpDown, Filter, CheckCircle2 } from 'lucide-react';
 
 export default function RiskFlags() {
   const { inactivityFlags, companies, opportunities, salesStages, getUserName, resolveFlag } = useData();
+  const { canCreate } = useRole();
   const [resolvingFlag, setResolvingFlag] = useState<number | null>(null);
 
   const openFlags = inactivityFlags.filter(f => !f.resolved_at);
@@ -114,7 +116,7 @@ export default function RiskFlags() {
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{flag.resolved_by ? getUserName(flag.resolved_by) : '--'}</td>
                   <td className="px-4 py-2.5 text-center">
-                    {!flag.resolved_at && (
+                    {!flag.resolved_at && canCreate && (
                       <button onClick={() => setResolvingFlag(flag.id)}
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded-md transition-colors">
                         <CheckCircle2 className="w-3 h-3" /> Resolve

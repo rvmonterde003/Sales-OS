@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatCurrency } from '../lib/helpers';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -9,12 +10,18 @@ import {
 const DONUT_COLORS = ['#ef4444', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899'];
 
 export default function Dashboard() {
-  const { opportunities, companies, activities, salesStages } = useData();
+  const { opportunities, companies, activities, salesStages, allOpportunities, allCompanies, allActivities } = useData();
+  const { isMember } = useRole();
+
+  // Members see total metrics only; reps see their own (already filtered in context); admins see all
+  const displayOpps = isMember ? allOpportunities : opportunities;
+  const displayCompanies = isMember ? allCompanies : companies;
+  const displayActivities = isMember ? allActivities : activities;
   const [trackerYear, setTrackerYear] = useState(new Date().getFullYear());
 
-  const openOpps = opportunities.filter(o => !o.closed_at);
+  const openOpps = displayOpps.filter(o => !o.closed_at);
   const wonStage = salesStages.find(s => s.name === 'Won');
-  const wins = opportunities.filter(o => o.stage_id === wonStage?.id);
+  const wins = displayOpps.filter(o => o.stage_id === wonStage?.id);
   const totalPipelineValue = openOpps.reduce((sum, o) => sum + o.deal_value, 0);
   const wonValue = wins.reduce((sum, o) => sum + o.deal_value, 0);
 
@@ -31,12 +38,12 @@ export default function Dashboard() {
 
   // Deals by type
   const dealsByType = (['New', 'Upsell', 'Renewal', 'Pilot'] as const)
-    .map(type => ({ name: type, value: opportunities.filter(o => o.opportunity_type === type).length }))
+    .map(type => ({ name: type, value: displayOpps.filter(o => o.opportunity_type === type).length }))
     .filter(d => d.value > 0);
 
   // Funnel
-  const totalCompanies = companies.length;
-  const qualified = companies.filter(c => c.lead_status === 'Qualified').length;
+  const totalCompanies = displayCompanies.length;
+  const qualified = displayCompanies.filter(c => c.lead_status === 'Qualified').length;
   const withDeals = new Set(openOpps.map(o => o.company_id)).size;
   const funnelSteps = [
     { label: 'Companies', pct: '100%', count: totalCompanies },
@@ -45,7 +52,7 @@ export default function Dashboard() {
     { label: 'Won', pct: `${totalCompanies ? ((wins.length / totalCompanies) * 100).toFixed(0) : 0}%`, count: wins.length },
   ];
 
-  const noData = opportunities.length === 0 && companies.length === 0;
+  const noData = displayOpps.length === 0 && displayCompanies.length === 0;
 
   return (
     <div className="p-6 max-w-[1200px]">
@@ -133,9 +140,9 @@ export default function Dashboard() {
           <TrackerTable
             year={trackerYear}
             onYearChange={setTrackerYear}
-            companies={companies}
-            opportunities={opportunities}
-            activities={activities}
+            companies={displayCompanies}
+            opportunities={displayOpps}
+            activities={displayActivities}
             salesStages={salesStages}
           />
         </>

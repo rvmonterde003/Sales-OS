@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, UNQUALIFY_REASONS, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import ActivityLogModal from '../components/ActivityLogModal';
 import AddContactModal from '../components/AddContactModal';
@@ -34,7 +35,9 @@ export default function CompanyDetail() {
   const [qualForm, setQualForm] = useState({ pain_and_value: '', timeline: '', budget_pricing_fit: '', person_in_position: '' });
   const [qualDirty, setQualDirty] = useState(false);
 
+  const { canEdit } = useRole();
   const company = companies.find(c => c.id === companyId);
+  const canEditThis = company ? canEdit(company.owner_id) : false;
   const qualification = qualificationChecks.find(q => q.company_id === companyId);
 
   // Sync local form when qualification data loads/changes
@@ -125,22 +128,24 @@ export default function CompanyDetail() {
           <span className="text-gray-300">/</span>
           <span className="text-[12px] text-gray-900 font-medium">{company.name}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowAddContact(true)}
-            className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
-            <Plus className="w-3 h-3" /> Add Contact
-          </button>
-          {isQualified && (
-            <button onClick={() => setShowCreateOpp(true)}
+        {canEditThis && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowAddContact(true)}
               className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
-              <Briefcase className="w-3 h-3" /> Create Opportunity
+              <Plus className="w-3 h-3" /> Add Contact
             </button>
-          )}
-          <button onClick={() => setShowActivityModal(true)}
-            className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-            <MessageSquarePlus className="w-3.5 h-3.5" /> Log Activity
-          </button>
-        </div>
+            {isQualified && (
+              <button onClick={() => setShowCreateOpp(true)}
+                className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
+                <Briefcase className="w-3 h-3" /> Create Opportunity
+              </button>
+            )}
+            <button onClick={() => setShowActivityModal(true)}
+              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+              <MessageSquarePlus className="w-3.5 h-3.5" /> Log Activity
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden flex flex-col">
@@ -202,10 +207,12 @@ export default function CompanyDetail() {
                 <div className="flex-1 h-2 rounded-full bg-gray-200" />
                 <span className="text-[11px] text-gray-400">Qualified</span>
               </div>
-              <button onClick={() => updateCompanyLeadStatus(company.id, 'SQL')}
-                className="text-[12px] bg-violet-600 text-white px-3 py-1.5 rounded-md hover:bg-violet-700 font-medium">
-                Move to SQL
-              </button>
+              {canEditThis && (
+                <button onClick={() => updateCompanyLeadStatus(company.id, 'SQL')}
+                  className="text-[12px] bg-violet-600 text-white px-3 py-1.5 rounded-md hover:bg-violet-700 font-medium">
+                  Move to SQL
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -239,27 +246,30 @@ export default function CompanyDetail() {
                     onChange={e => { setQualForm(prev => ({ ...prev, [item.key]: e.target.value })); setQualDirty(true); }}
                     placeholder={item.placeholder}
                     rows={2}
-                    className="w-full border border-gray-200 rounded-md px-3 py-2 text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    disabled={!canEditThis}
+                    className="w-full border border-gray-200 rounded-md px-3 py-2 text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
                   />
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-2 mt-4">
-              <button onClick={handleSaveQualification} disabled={bantScore < 4}
-                className="flex items-center gap-1.5 text-[12px] bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-40 transition-colors">
-                <Save className="w-3 h-3" /> Save Qualification {bantScore < 4 ? `(${bantScore}/4)` : ''}
-              </button>
-              {qualDirty && bantScore < 4 && (
-                <button onClick={async () => { await saveQualification(company.id, qualForm); setQualDirty(false); }}
-                  className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50">
-                  <Save className="w-3 h-3" /> Save Draft
+            {canEditThis && (
+              <div className="flex items-center gap-2 mt-4">
+                <button onClick={handleSaveQualification} disabled={bantScore < 4}
+                  className="flex items-center gap-1.5 text-[12px] bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-40 transition-colors">
+                  <Save className="w-3 h-3" /> Save Qualification {bantScore < 4 ? `(${bantScore}/4)` : ''}
                 </button>
-              )}
-              <button onClick={() => setShowUnqualifyModal(true)}
-                className="text-[12px] bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 font-medium">
-                Unqualify
-              </button>
-            </div>
+                {qualDirty && bantScore < 4 && (
+                  <button onClick={async () => { await saveQualification(company.id, qualForm); setQualDirty(false); }}
+                    className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50">
+                    <Save className="w-3 h-3" /> Save Draft
+                  </button>
+                )}
+                <button onClick={() => setShowUnqualifyModal(true)}
+                  className="text-[12px] bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 font-medium">
+                  Unqualify
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -404,7 +414,7 @@ export default function CompanyDetail() {
                           <td className="px-5 py-2 text-gray-500 text-[12px]">{formatDate(opp.closed_at)}</td>
                           <td className="px-5 py-2 text-right text-gray-400 text-[12px]">{getDealAge(opp.created_at, opp.closed_at)}d</td>
                           <td className="px-5 py-2 text-right">
-                            {isLost && (
+                            {isLost && canEditThis && (
                               <button onClick={() => reopenOpportunity(opp.id)}
                                 className="text-[11px] text-violet-600 hover:text-violet-800 font-medium">
                                 Reopen

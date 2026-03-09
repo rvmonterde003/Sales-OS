@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import { formatDateTime } from '../lib/helpers';
 import StatusBadge from '../components/StatusBadge';
 import ActivityLogModal from '../components/ActivityLogModal';
@@ -10,6 +11,7 @@ export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
   const contactId = Number(id);
   const { contacts, companies, opportunities, activities, salesStages, getUserName } = useData();
+  const { canEdit } = useRole();
   const [showActivityModal, setShowActivityModal] = useState(false);
 
   const contact = contacts.find(c => c.id === contactId);
@@ -123,10 +125,12 @@ export default function ContactDetail() {
               Activity Log
               <span className="ml-1.5 text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{contactActivities.length}</span>
             </h2>
-            <button onClick={() => setShowActivityModal(true)}
-              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-              <Plus className="w-3.5 h-3.5" /> Log Activity
-            </button>
+            {company && canEdit(company.owner_id) && (
+              <button onClick={() => setShowActivityModal(true)}
+                className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+                <Plus className="w-3.5 h-3.5" /> Log Activity
+              </button>
+            )}
           </div>
           {contactActivities.length > 0 ? (
             <div className="border border-gray-200 rounded-lg overflow-hidden">

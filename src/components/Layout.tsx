@@ -11,6 +11,7 @@ const routeTitles: Record<string, { title: string }> = {
   '/activities': { title: 'Activities' },
   '/risk-flags': { title: 'Risk Flags' },
   '/definitions': { title: 'Definitions' },
+  '/profile': { title: 'Profile' },
 };
 
 export default function Layout() {

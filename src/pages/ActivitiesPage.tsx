@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDateTime } from '../lib/helpers';
 import { useData } from '../context/DataContext';
+import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import ActivityLogModal from '../components/ActivityLogModal';
 import { Plus, Search, Paperclip } from 'lucide-react';
 
 export default function ActivitiesPage() {
   const { activities, companies, contacts, getUserName } = useData();
+  const { canCreate, canSeeRepData } = useRole();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -52,10 +54,12 @@ export default function ActivitiesPage() {
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
             className="border border-gray-200 rounded-md text-[12px] px-2 py-1.5 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400"
             title="To date" />
-          <button onClick={() => setShowLog(true)}
-            className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Log Activity
-          </button>
+          {canCreate && (
+            <button onClick={() => setShowLog(true)}
+              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Log Activity
+            </button>
+          )}
         </div>
       </div>
 
@@ -67,7 +71,7 @@ export default function ActivitiesPage() {
               <th className="text-left font-medium text-gray-500 px-4 py-2">Company</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2">Contact</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 w-[35%]">Notes</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2">Logged by</th>
+              {canSeeRepData && <th className="text-left font-medium text-gray-500 px-4 py-2">Logged by</th>}
               <th className="text-left font-medium text-gray-500 px-4 py-2">When</th>
               <th className="text-center font-medium text-gray-500 px-4 py-2 w-8"></th>
             </tr>
@@ -93,7 +97,7 @@ export default function ActivitiesPage() {
                     ) : <span className="text-gray-300">--</span>}
                   </td>
                   <td className="px-4 py-2.5 text-gray-600 text-[12px] truncate max-w-0">{act.notes || '--'}</td>
-                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getUserName(act.logged_by)}</td>
+                  {canSeeRepData && <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getUserName(act.logged_by)}</td>}
                   <td className="px-4 py-2.5 text-gray-400 text-[12px] whitespace-nowrap">{formatDateTime(act.activity_timestamp)}</td>
                   <td className="px-4 py-2.5 text-center">
                     {attachments.length > 0 && (

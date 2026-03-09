@@ -13,6 +13,7 @@ import ActivitiesPage from './pages/ActivitiesPage';
 import RiskFlags from './pages/RiskFlags';
 import RevenueTimeline from './pages/RevenueTimeline';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 
 function AuthGate() {
@@ -45,8 +46,8 @@ function AuthGate() {
             <Route path="/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/activities" element={<ActivitiesPage />} />
             <Route path="/risk-flags" element={<RiskFlags />} />
-            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/definitions" element={<SettingsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Routes>
       </BrowserRouter>

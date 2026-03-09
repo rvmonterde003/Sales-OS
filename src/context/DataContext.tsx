@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import type {
@@ -17,6 +17,10 @@ interface DataContextType {
   inactivityFlags: DbInactivityFlag[];
   salesStages: DbSalesStage[];
   lossReasons: DbLossReason[];
+  /** All companies/opps/activities unfiltered — for total metrics (member sees totals) */
+  allCompanies: DbCompany[];
+  allOpportunities: DbOpportunity[];
+  allActivities: DbActivity[];
   loading: boolean;
 
   getStageById: (id: number) => DbSalesStage | undefined;
@@ -89,6 +93,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // Role-based filtering: reps see only their own data, admin/member see all
+  const role = dbUser?.role || 'member';
+  const myId = dbUser?.id;
+
+  const myCompanyIds = useMemo(() => {
+    if (role === 'admin' || role === 'member') return null; // null = no filter
+    return new Set(companies.filter(c => c.owner_id === myId).map(c => c.id));
+  }, [companies, role, myId]);
+
+  const filteredCompanies = useMemo(() => {
+    if (!myCompanyIds) return companies;
+    return companies.filter(c => myCompanyIds.has(c.id));
+  }, [companies, myCompanyIds]);
+
+  const filteredContacts = useMemo(() => {
+    if (!myCompanyIds) return contacts;
+    return contacts.filter(c => myCompanyIds.has(c.company_id));
+  }, [contacts, myCompanyIds]);
+
+  const filteredOpportunities = useMemo(() => {
+    if (!myCompanyIds) return opportunities;
+    return opportunities.filter(o => myCompanyIds.has(o.company_id));
+  }, [opportunities, myCompanyIds]);
+
+  const filteredActivities = useMemo(() => {
+    if (!myCompanyIds) return activities;
+    return activities.filter(a => myCompanyIds.has(a.company_id));
+  }, [activities, myCompanyIds]);
+
+  const filteredFlags = useMemo(() => {
+    if (!myCompanyIds) return inactivityFlags;
+    return inactivityFlags.filter(f => f.company_id && myCompanyIds.has(f.company_id));
+  }, [inactivityFlags, myCompanyIds]);
 
   const getStageById = useCallback(
     (id: number) => salesStages.find(s => s.id === id),
@@ -453,9 +491,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return (
     <DataContext.Provider value={{
-      companies, contacts, opportunities, activities,
-      stageTransitions, qualificationChecks, inactivityFlags,
-      salesStages, lossReasons, loading,
+      companies: filteredCompanies, contacts: filteredContacts,
+      opportunities: filteredOpportunities, activities: filteredActivities,
+      stageTransitions, qualificationChecks, inactivityFlags: filteredFlags,
+      salesStages, lossReasons,
+      allCompanies: companies, allOpportunities: opportunities, allActivities: activities,
+      loading,
       getStageById, getUserName,
       addCompany, updateCompanyLeadStatus, addContact, addActivity, addOpportunity,
       updateOpportunity, moveToStage, pushbackStage, closeOpportunity, reopenOpportunity,
