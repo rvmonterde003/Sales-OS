@@ -100,16 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lastName: string,
     token: string,
   ): Promise<string | null> => {
-    // Validate invite token
-    const { data: invite, error: invErr } = await supabase
+    // Validate invite token — first check token exists, then check email matches
+    const { data: tokenRow } = await supabase
       .from('invitations')
       .select('*')
       .eq('token', token)
-      .eq('email', email)
       .is('accepted_at', null)
       .single();
 
-    if (invErr || !invite) return 'Invalid or expired invitation. Only invited emails can sign up.';
+    if (!tokenRow) return 'Invalid or expired invitation token.';
+    if (tokenRow.email !== email) return `This invitation was sent to a different email address. Please use the email that received the invite.`;
+    const invite = tokenRow;
 
     // Create auth user
     const { error } = await supabase.auth.signUp({

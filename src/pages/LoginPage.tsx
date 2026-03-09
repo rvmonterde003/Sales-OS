@@ -1,18 +1,42 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Scale } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+function extractTokenFromURL(): string {
+  // Try ?token= from query string
+  const searchParams = new URLSearchParams(window.location.search);
+  const fromSearch = searchParams.get('token');
+  if (fromSearch) return fromSearch;
+
+  // Try #signup?token= from hash
+  const hash = window.location.hash;
+  if (hash.includes('token=')) {
+    const hashParams = new URLSearchParams(hash.split('?')[1] || '');
+    return hashParams.get('token') || '';
+  }
+  return '';
+}
+
 export default function LoginPage() {
   const { login, signup, resetPassword } = useAuth();
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
+
+  const urlToken = extractTokenFromURL();
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(urlToken ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [inviteToken, setInviteToken] = useState('');
+  const [inviteToken, setInviteToken] = useState(urlToken);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Clean up URL after extracting token (so refreshing doesn't keep showing it)
+  useEffect(() => {
+    if (urlToken) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [urlToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

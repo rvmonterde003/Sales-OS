@@ -45,7 +45,7 @@ export default function ProfilePage() {
   };
 
   const handleCopyLink = (token: string, id: number) => {
-    const link = `${window.location.origin}/#signup?token=${token}`;
+    const link = `${window.location.origin}?token=${token}`;
     navigator.clipboard.writeText(link);
     setCopiedToken(id);
     setTimeout(() => setCopiedToken(null), 2000);
