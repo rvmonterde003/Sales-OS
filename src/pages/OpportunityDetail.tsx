@@ -39,7 +39,7 @@ export default function OpportunityDetail() {
   const contact = opp.primary_contact_id ? contacts.find(c => c.id === opp.primary_contact_id) : null;
   const stage = salesStages.find(s => s.id === opp.stage_id);
   const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
-  const oppActivities = activities.filter(a => a.company_id === opp.company_id && (a.related_opportunity_id === opp.id || a.related_opportunity_id === null));
+  const oppActivities = activities.filter(a => a.related_opportunity_id === opp.id);
   const transitions = stageTransitions.filter(t => t.opportunity_id === opp.id);
   const flags = inactivityFlags.filter(f => f.related_opportunity_id === opp.id && !f.resolved_at);
   const qualification = qualificationChecks.find(q => q.company_id === opp.company_id);
@@ -81,7 +81,8 @@ export default function OpportunityDetail() {
   };
 
   const isPushbackActivity = (notes: string | null) => notes?.startsWith('[PUSHBACK]');
-  const isCloseActivity = (notes: string | null) => notes?.startsWith('[CLOSED');
+  const isClosedWonActivity = (notes: string | null) => notes?.startsWith('[CLOSED WON]');
+  const isClosedLostActivity = (notes: string | null) => notes?.startsWith('[CLOSED LOST]');
   const isReopenActivity = (notes: string | null) => notes?.startsWith('[REOPENED]');
 
   return (
@@ -127,10 +128,12 @@ export default function OpportunityDetail() {
             }`}>
               Opportunity Closed ({stage?.name})
             </span>
-            <button onClick={() => reopenOpportunity(opp.id)}
-              className="flex items-center gap-1.5 text-[12px] text-violet-600 border border-violet-200 rounded-md px-2.5 py-1.5 hover:bg-violet-50 transition-colors font-medium">
-              <RotateCcw className="w-3 h-3" /> Reopen
-            </button>
+            {stage?.name === 'Loss' && (
+              <button onClick={() => reopenOpportunity(opp.id)}
+                className="flex items-center gap-1.5 text-[12px] text-violet-600 border border-violet-200 rounded-md px-2.5 py-1.5 hover:bg-violet-50 transition-colors font-medium">
+                <RotateCcw className="w-3 h-3" /> Reopen
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -275,12 +278,14 @@ export default function OpportunityDetail() {
               ) : (
                 oppActivities.map(act => {
                   const isPB = isPushbackActivity(act.notes);
-                  const isClose = isCloseActivity(act.notes);
+                  const isWon = isClosedWonActivity(act.notes);
+                  const isLost = isClosedLostActivity(act.notes);
                   const isReopen = isReopenActivity(act.notes);
                   return (
                     <div key={act.id} className={`flex gap-2.5 ${
                       isPB ? 'bg-amber-50 border border-amber-200 rounded-md p-2' :
-                      isClose ? 'bg-red-50 border border-red-200 rounded-md p-2' :
+                      isWon ? 'bg-emerald-50 border border-emerald-200 rounded-md p-2' :
+                      isLost ? 'bg-red-50 border border-red-200 rounded-md p-2' :
                       isReopen ? 'bg-emerald-50 border border-emerald-200 rounded-md p-2' : ''
                     }`}>
                       <StatusBadge status={act.activity_type} variant="tag" />

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onSubmitted?: () => void;
   defaultCompanyId?: number;
   defaultOpportunityId?: number | null;
   defaultContactId?: number | null;
@@ -18,7 +19,7 @@ interface Attachment {
   type: string; // 'pdf' | 'csv' | 'link' | etc.
 }
 
-export default function ActivityLogModal({ isOpen, onClose, defaultCompanyId, defaultOpportunityId, defaultContactId }: Props) {
+export default function ActivityLogModal({ isOpen, onClose, onSubmitted, defaultCompanyId, defaultOpportunityId, defaultContactId }: Props) {
   const { companies, contacts, opportunities, addActivity } = useData();
   const [activityType, setActivityType] = useState<string>('Call');
   const [companyId, setCompanyId] = useState<number | ''>(defaultCompanyId || '');
@@ -89,6 +90,7 @@ export default function ActivityLogModal({ isOpen, onClose, defaultCompanyId, de
       notes,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
+    onSubmitted?.();
     onClose();
   };
 

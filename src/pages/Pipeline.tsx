@@ -3,6 +3,7 @@ import { formatCurrency } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
 import InlinePipelineControl from '../components/InlinePipelineControl';
+import ActivityLogModal from '../components/ActivityLogModal';
 import { Link } from 'react-router-dom';
 import { Clock, User, SlidersHorizontal, Filter, GripVertical } from 'lucide-react';
 
@@ -10,16 +11,36 @@ export default function Pipeline() {
   const { opportunities, companies, contacts, salesStages, stageTransitions, moveToStage } = useData();
   const [dragOppId, setDragOppId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
+  const [pendingMove, setPendingMove] = useState<{ oppId: number; targetStageId: number } | null>(null);
   const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
+
+  const pendingOpp = pendingMove ? opportunities.find(o => o.id === pendingMove.oppId) : null;
 
   const handleDragStart = (oppId: number) => setDragOppId(oppId);
   const handleDragOver = (e: React.DragEvent, stageId: number) => { e.preventDefault(); setDropTarget(stageId); };
   const handleDragLeave = () => setDropTarget(null);
   const handleDrop = (targetStageId: number) => {
-    if (dragOppId) moveToStage(dragOppId, targetStageId, 'Moved via pipeline board.');
-    setDragOppId(null); setDropTarget(null);
+    if (dragOppId) {
+      const opp = opportunities.find(o => o.id === dragOppId);
+      // Only prompt if actually changing stage
+      if (opp && opp.stage_id !== targetStageId) {
+        setPendingMove({ oppId: dragOppId, targetStageId });
+      }
+    }
+    setDragOppId(null);
+    setDropTarget(null);
   };
   const handleDragEnd = () => { setDragOppId(null); setDropTarget(null); };
+
+  const handleActivitySubmitted = async () => {
+    if (pendingMove) {
+      await moveToStage(pendingMove.oppId, pendingMove.targetStageId, 'Moved via pipeline board.');
+    }
+  };
+
+  const handleModalClose = () => {
+    setPendingMove(null);
+  };
 
   const getDaysInStage = (oppId: number, createdAt: string) => {
     const t = stageTransitions.find(t => t.opportunity_id === oppId);
@@ -110,6 +131,14 @@ export default function Pipeline() {
           })}
         </div>
       </div>
+
+      <ActivityLogModal
+        isOpen={!!pendingMove}
+        onClose={handleModalClose}
+        onSubmitted={handleActivitySubmitted}
+        defaultCompanyId={pendingOpp?.company_id}
+        defaultOpportunityId={pendingMove?.oppId}
+      />
     </div>
   );
 }

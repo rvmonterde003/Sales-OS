@@ -233,15 +233,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Check if there's been an activity logged for this opp's company since the last stage transition
+  // Check if there's been an activity specifically tagged to this opportunity since the last stage transition
   const hasActivitySinceLastTransition = useCallback((oppId: number): boolean => {
     const opp = opportunities.find(o => o.id === oppId);
     if (!opp) return false;
     const lastTransition = stageTransitions.find(t => t.opportunity_id === oppId);
     const refTime = lastTransition ? new Date(lastTransition.created_at).getTime() : new Date(opp.created_at).getTime();
     return activities.some(a =>
-      a.company_id === opp.company_id &&
-      (a.related_opportunity_id === oppId || a.related_opportunity_id === null) &&
+      a.related_opportunity_id === oppId &&
       new Date(a.activity_timestamp).getTime() > refTime
     );
   }, [opportunities, stageTransitions, activities]);

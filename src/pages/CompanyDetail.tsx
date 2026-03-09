@@ -118,7 +118,8 @@ export default function CompanyDetail() {
   };
 
   const isPushbackActivity = (notes: string | null) => notes?.startsWith('[PUSHBACK]');
-  const isCloseActivity = (notes: string | null) => notes?.startsWith('[CLOSED');
+  const isClosedWonActivity = (notes: string | null) => notes?.startsWith('[CLOSED WON]');
+  const isClosedLostActivity = (notes: string | null) => notes?.startsWith('[CLOSED LOST]');
   const isReopenActivity = (notes: string | null) => notes?.startsWith('[REOPENED]');
 
   return (
@@ -150,7 +151,7 @@ export default function CompanyDetail() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100">
           <div className="flex items-start justify-between">
@@ -362,9 +363,9 @@ export default function CompanyDetail() {
           </div>
         )}
 
-        <div className="grid grid-cols-3 divide-x divide-gray-100 min-h-0">
+        <div className="grid grid-cols-3 divide-x divide-gray-100 min-h-0 flex-1">
           {/* Left: Contacts + Opportunities */}
-          <div className="col-span-2">
+          <div className="col-span-2 overflow-y-auto">
             <div className="border-b border-gray-100">
               <div className="px-5 py-3 flex items-center gap-2">
                 <h2 className="text-[13px] font-semibold text-gray-900">Contacts</h2>
@@ -430,6 +431,7 @@ export default function CompanyDetail() {
                   <tbody>
                     {companyOpps.filter(o => o.closed_at).map(opp => {
                       const stage = salesStages.find(s => s.id === opp.stage_id);
+                      const isLost = stage?.name === 'Loss';
                       return (
                         <tr key={opp.id} className="border-b border-gray-50">
                           <td className="px-5 py-2">
@@ -440,10 +442,12 @@ export default function CompanyDetail() {
                           <td className="px-5 py-2 text-gray-500 text-[12px]">{formatDate(opp.closed_at)}</td>
                           <td className="px-5 py-2 text-right text-gray-400 text-[12px]">{getDealAge(opp.created_at, opp.closed_at)}d</td>
                           <td className="px-5 py-2 text-right">
-                            <button onClick={() => reopenOpportunity(opp.id)}
-                              className="text-[11px] text-violet-600 hover:text-violet-800 font-medium">
-                              Reopen
-                            </button>
+                            {isLost && (
+                              <button onClick={() => reopenOpportunity(opp.id)}
+                                className="text-[11px] text-violet-600 hover:text-violet-800 font-medium">
+                                Reopen
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -455,7 +459,7 @@ export default function CompanyDetail() {
           </div>
 
           {/* Right: Activity Timeline */}
-          <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
+          <div className="overflow-y-auto">
             <div className="px-4 py-3 border-b border-gray-100">
               <h2 className="text-[13px] font-semibold text-gray-900">Activity</h2>
             </div>
@@ -470,7 +474,8 @@ export default function CompanyDetail() {
                   return (
                     <div key={act.id} className={`flex gap-2.5 rounded-md p-1.5 ${
                       isPushback ? 'bg-amber-50 border border-amber-200' :
-                      isCloseActivity(act.notes) ? 'bg-red-50 border border-red-200' :
+                      isClosedWonActivity(act.notes) ? 'bg-emerald-50 border border-emerald-200' :
+                      isClosedLostActivity(act.notes) ? 'bg-red-50 border border-red-200' :
                       isReopenActivity(act.notes) ? 'bg-emerald-50 border border-emerald-200' : ''
                     }`}>
                       <StatusBadge status={act.activity_type} variant="tag" />

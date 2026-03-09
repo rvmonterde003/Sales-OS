@@ -10,6 +10,8 @@ export default function ActivitiesPage() {
   const { activities, companies, contacts, getUserName } = useData();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showLog, setShowLog] = useState(false);
 
   const filtered = activities.filter(a => {
@@ -20,7 +22,10 @@ export default function ActivitiesPage() {
       (company?.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (contact ? `${contact.first_name} ${contact.last_name}`.toLowerCase().includes(search.toLowerCase()) : false);
     const matchesType = !typeFilter || a.activity_type === typeFilter;
-    return matchesSearch && matchesType;
+    const actDate = a.activity_timestamp.split('T')[0];
+    const matchesFrom = !dateFrom || actDate >= dateFrom;
+    const matchesTo = !dateTo || actDate <= dateTo;
+    return matchesSearch && matchesType && matchesFrom && matchesTo;
   });
 
   return (
@@ -41,6 +46,12 @@ export default function ActivitiesPage() {
             <option value="">All types</option>
             {['Call', 'Email', 'Meeting', 'Note', 'Prospecting Touch'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="border border-gray-200 rounded-md text-[12px] px-2 py-1.5 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400"
+            title="From date" />
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            className="border border-gray-200 rounded-md text-[12px] px-2 py-1.5 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400"
+            title="To date" />
           <button onClick={() => setShowLog(true)}
             className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Log Activity

@@ -72,4 +72,4 @@ export const PUSHBACK_REASONS = [
 ] as const;
 export const CONTACT_ROLES = ['Decision Maker', 'Operations', 'Associate', 'Other'] as const;
 export const FIRM_SIZES = ['2-10', '11-50', '51-200', '200+'] as const;
-export const DEAL_SOURCES = ['Ad', 'Referral', 'Website', 'Newsletter', 'Cold Outreach', 'Other'] as const;
+export const DEAL_SOURCES = ['Demo Request', 'Website', 'Events', 'Webinar', 'Referral', 'Social', 'Advertising', 'Podcast', 'Email', 'Influencer', 'Partnership', 'PR'] as const;
