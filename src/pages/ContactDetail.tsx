@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { formatDateTime } from '../lib/helpers';
 import StatusBadge from '../components/StatusBadge';
-import { ArrowLeft, Mail, Phone, Building2, Linkedin } from 'lucide-react';
+import ActivityLogModal from '../components/ActivityLogModal';
+import { ArrowLeft, Mail, Phone, Building2, Linkedin, Plus, Paperclip } from 'lucide-react';
 
 export default function ContactDetail() {
   const { id } = useParams<{ id: string }>();
   const contactId = Number(id);
-  const { contacts, companies, opportunities, salesStages } = useData();
+  const { contacts, companies, opportunities, activities, salesStages, getUserName } = useData();
+  const [showActivityModal, setShowActivityModal] = useState(false);
 
   const contact = contacts.find(c => c.id === contactId);
   if (!contact) {
@@ -20,6 +24,9 @@ export default function ContactDetail() {
 
   const company = companies.find(c => c.id === contact.company_id);
   const linkedOpps = opportunities.filter(o => o.primary_contact_id === contact.id);
+  const contactActivities = activities
+    .filter(a => a.contact_id === contact.id)
+    .sort((a, b) => new Date(b.activity_timestamp).getTime() - new Date(a.activity_timestamp).getTime());
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -109,13 +116,73 @@ export default function ContactDetail() {
           </div>
         )}
 
-        {linkedOpps.length === 0 && (
-          <div className="px-6 py-8 text-center text-[13px] text-gray-400">
-            This contact is reference data for their company.
-            <Link to={`/companies/${contact.company_id}`} className="text-violet-600 hover:underline ml-1">View company</Link>
+        {/* Activity Log */}
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[13px] font-semibold text-gray-900">
+              Activity Log
+              <span className="ml-1.5 text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">{contactActivities.length}</span>
+            </h2>
+            <button onClick={() => setShowActivityModal(true)}
+              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Log Activity
+            </button>
           </div>
-        )}
+          {contactActivities.length > 0 ? (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="attio-table w-full text-[13px]">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/40">
+                    <th className="text-left font-medium text-gray-500 px-4 py-1.5">Type</th>
+                    <th className="text-left font-medium text-gray-500 px-4 py-1.5">Company</th>
+                    <th className="text-left font-medium text-gray-500 px-4 py-1.5 w-[35%]">Notes</th>
+                    <th className="text-left font-medium text-gray-500 px-4 py-1.5">Logged by</th>
+                    <th className="text-left font-medium text-gray-500 px-4 py-1.5">When</th>
+                    <th className="text-center font-medium text-gray-500 px-4 py-1.5 w-8"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contactActivities.map(act => {
+                    const actCompany = companies.find(c => c.id === act.company_id);
+                    const attachments = (act.attachments || []) as { name: string; url: string; type: string }[];
+                    return (
+                      <tr key={act.id} className="border-b border-gray-50">
+                        <td className="px-4 py-2.5"><StatusBadge status={act.activity_type} variant="tag" /></td>
+                        <td className="px-4 py-2.5">
+                          {actCompany ? (
+                            <Link to={`/companies/${actCompany.id}`} className="text-gray-900 hover:text-violet-600 font-medium text-[12px]">{actCompany.name}</Link>
+                          ) : '--'}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-600 text-[12px] truncate max-w-0">{act.notes || '--'}</td>
+                        <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getUserName(act.logged_by)}</td>
+                        <td className="px-4 py-2.5 text-gray-400 text-[12px] whitespace-nowrap">{formatDateTime(act.activity_timestamp)}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {attachments.length > 0 && (
+                            <span className="inline-flex items-center gap-0.5 text-[11px] text-gray-400" title={`${attachments.length} attachment(s)`}>
+                              <Paperclip className="w-3 h-3" />{attachments.length}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-lg px-4 py-8 text-center text-[13px] text-gray-400">
+              No activities logged for this contact yet.
+            </div>
+          )}
+        </div>
       </div>
+
+      <ActivityLogModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        defaultCompanyId={contact.company_id}
+        defaultContactId={contact.id}
+      />
     </div>
   );
 }
