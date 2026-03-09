@@ -6,7 +6,7 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
       <div className="flex items-center px-5 py-2 border-b border-gray-200 bg-white shrink-0">
-        <span className="text-[13px] font-medium text-gray-900">Settings</span>
+        <span className="text-[13px] font-medium text-gray-900">Definitions</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 max-w-[1100px]">

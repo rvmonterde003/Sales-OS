@@ -19,6 +19,7 @@ export default function OpportunityDetail() {
     moveToStage, closeOpportunity, reopenOpportunity, pushbackStage, hasActivitySinceLastTransition,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [advancePending, setAdvancePending] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState<'won' | 'lost' | null>(null);
   const [closeReasonId, setCloseReasonId] = useState<number | ''>('');
   const [closeNotes, setCloseNotes] = useState('');
@@ -54,10 +55,17 @@ export default function OpportunityDetail() {
   const isAtFirst = opp.stage_id === nonTerminalStages[0]?.id;
 
   const handleAdvance = () => {
-    if (!hasActivity) return;
+    setAdvancePending(true);
+  };
+
+  const handleAdvanceActivitySubmitted = async () => {
     const currentOrder = stage?.stage_order || 0;
     const nextStage = nonTerminalStages.find(s => s.stage_order === currentOrder + 1);
-    if (nextStage) moveToStage(opp.id, nextStage.id, 'Stage advanced manually.');
+    if (nextStage) await moveToStage(opp.id, nextStage.id, 'Stage advanced manually.');
+  };
+
+  const handleAdvanceModalClose = () => {
+    setAdvancePending(false);
   };
 
   const handlePushback = async () => {
@@ -105,11 +113,9 @@ export default function OpportunityDetail() {
               className="flex items-center gap-1.5 text-[12px] text-amber-600 border border-amber-200 rounded-md px-2.5 py-1.5 hover:bg-amber-50 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
               <Undo2 className="w-3 h-3" /> Push Back
             </button>
-            <button onClick={handleAdvance} disabled={!hasActivity || isAtVerbal}
-              className="flex items-center gap-1.5 text-[12px] text-white bg-violet-600 rounded-md px-2.5 py-1.5 hover:bg-violet-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-              title={!hasActivity ? 'Log activity before advancing' : ''}>
+            <button onClick={handleAdvance} disabled={isAtVerbal}
+              className="flex items-center gap-1.5 text-[12px] text-white bg-violet-600 rounded-md px-2.5 py-1.5 hover:bg-violet-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed">
               <ChevronRight className="w-3 h-3" /> Advance Stage
-              {hasActivity && <span className="w-2 h-2 rounded-full bg-green-400 ml-1" />}
             </button>
             <button onClick={() => setShowCloseModal('won')} disabled={!isAtVerbal}
               className="flex items-center gap-1.5 text-[12px] text-white bg-emerald-600 rounded-md px-2.5 py-1.5 hover:bg-emerald-700 transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
@@ -309,6 +315,10 @@ export default function OpportunityDetail() {
       </div>
 
       <ActivityLogModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)}
+        defaultCompanyId={opp.company_id} defaultOpportunityId={opp.id} />
+
+      <ActivityLogModal isOpen={advancePending} onClose={handleAdvanceModalClose}
+        onSubmitted={handleAdvanceActivitySubmitted}
         defaultCompanyId={opp.company_id} defaultOpportunityId={opp.id} />
 
       {/* Pushback modal */}

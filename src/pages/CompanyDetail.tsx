@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, UNQUALIFY_REASONS, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import StatusBadge from '../components/StatusBadge';
@@ -13,6 +14,7 @@ import {
 
 export default function CompanyDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const companyId = Number(id);
   const {
     companies, contacts, opportunities, activities,
@@ -285,72 +287,42 @@ export default function CompanyDetail() {
                 {openOpps.map(opp => {
                   const stage = salesStages.find(s => s.id === opp.stage_id);
                   const contact = opp.primary_contact_id ? contacts.find(c => c.id === opp.primary_contact_id) : null;
-                  const hasActivity = hasActivitySinceLastTransition(opp.id);
-                  const isTerminal = stage?.name === 'Won' || stage?.name === 'Loss';
-                  const isAtFirst = opp.stage_id === nonTerminalStages[0]?.id;
-                  const isAtLast = opp.stage_id === nonTerminalStages[nonTerminalStages.length - 1]?.id;
 
                   return (
-                    <div key={opp.id} className="border border-gray-200 rounded-lg p-3">
+                    <div key={opp.id}
+                      onClick={() => navigate(`/opportunities/${opp.id}`)}
+                      className="border border-gray-200 rounded-lg p-3 cursor-pointer transition-colors hover:bg-gray-900 hover:border-gray-900 group/card">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <Link to={`/opportunities/${opp.id}`} className="text-[12px] font-medium text-gray-900 hover:text-violet-600">{stage?.name}</Link>
+                          <span className="text-[12px] font-medium text-gray-900 group-hover/card:text-white">{stage?.name}</span>
                           <StatusBadge status={opp.opportunity_type} variant="tag" />
                           {opp.forecast_category && <StatusBadge status={opp.forecast_category} variant="tag" />}
                         </div>
-                        <span className="text-[14px] font-bold text-gray-900">{formatCurrency(opp.deal_value)}</span>
+                        <span className="text-[14px] font-bold text-gray-900 group-hover/card:text-white">{formatCurrency(opp.deal_value)}</span>
                       </div>
-                      <p className="text-[11px] text-gray-500 mb-2 truncate">{opp.service_description}</p>
+                      <p className="text-[11px] text-gray-500 mb-2 truncate group-hover/card:text-gray-400">{opp.service_description}</p>
 
                       {/* Stage progress bar */}
                       <div className="flex items-center gap-0.5 mb-2">
                         {nonTerminalStages.map(s => {
                           const isCurrent = s.id === opp.stage_id;
                           const isPast = s.stage_order < (stage?.stage_order || 0);
-                          // Check if this stage was advanced with an activity (green)
-                          const wasAdvancedTo = stageTransitions.some(t => t.opportunity_id === opp.id && t.to_stage_id === s.id && t.from_stage_id !== null);
                           return (
-                            <div key={s.id} className="flex-1 group relative">
+                            <div key={s.id} className="flex-1">
                               <div className={`h-1.5 rounded-full ${
-                                isCurrent ? 'bg-violet-500' : isPast && wasAdvancedTo ? 'bg-emerald-400' : isPast ? 'bg-emerald-400' : 'bg-gray-200'
+                                isCurrent ? 'bg-violet-500 group-hover/card:bg-violet-400' : isPast ? 'bg-emerald-400 group-hover/card:bg-emerald-300' : 'bg-gray-200 group-hover/card:bg-gray-600'
                               }`} />
-                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                                {s.name}
-                              </div>
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* Stage controls */}
-                      {!isTerminal && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <button onClick={() => setShowPushbackModal(opp.id)} disabled={isAtFirst}
-                            className="flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md hover:bg-amber-100 disabled:opacity-30 transition-colors">
-                            <ChevronLeft className="w-3 h-3" /> Push Back
-                          </button>
-                          <button onClick={() => handleAdvanceStage(opp.id)} disabled={!hasActivity || isAtLast}
-                            className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded-md transition-colors ${
-                              hasActivity ? 'text-white bg-violet-600 hover:bg-violet-700' : 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                            }`}
-                            title={!hasActivity ? 'Log an activity before advancing' : 'Advance to next stage'}>
-                            Advance <ChevronRight className="w-3 h-3" />
-                          </button>
-                          {hasActivity && (
-                            <span className="text-[10px] text-emerald-600 font-medium">Activity logged</span>
-                          )}
-                          {!hasActivity && (
-                            <span className="text-[10px] text-amber-600">Requires activity log</span>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400">
+                      <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400 group-hover/card:text-gray-500">
                         <span>{contact ? `${contact.first_name} ${contact.last_name}` : '--'}</span>
                         <div className="flex items-center gap-3">
                           {opp.expected_close_date && <span>Close: {formatDate(opp.expected_close_date)}</span>}
                           <span>{getDealAge(opp.created_at, opp.closed_at)}d old</span>
-                          <span className={getDaysInStage(opp.id, opp.created_at) > 14 ? 'text-red-500' : ''}>
+                          <span className={getDaysInStage(opp.id, opp.created_at) > 14 ? 'text-red-500 group-hover/card:text-red-400' : ''}>
                             {getDaysInStage(opp.id, opp.created_at)}d in stage
                           </span>
                         </div>

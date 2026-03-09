@@ -46,6 +46,7 @@ function AuthGate() {
             <Route path="/activities" element={<ActivitiesPage />} />
             <Route path="/risk-flags" element={<RiskFlags />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/definitions" element={<SettingsPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
