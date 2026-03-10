@@ -206,6 +206,44 @@ CREATE POLICY "stage_transitions_all" ON stage_transitions FOR ALL TO authentica
 CREATE POLICY "activities_all" ON activities FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "inactivity_flags_all" ON inactivity_flags FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
+-- Delete policy for users table (needed for hard delete)
+CREATE POLICY "auth_users_delete" ON users FOR DELETE TO authenticated USING (true);
+
+-- ────────────────────────────────────────────────────────────
+-- 2b. FUNCTION: delete_app_user (hard delete from users + auth.users)
+-- ────────────────────────────────────────────────────────────
+-- SECURITY DEFINER runs with the function creator's privileges,
+-- so the frontend can delete from auth.users without the service role key.
+
+CREATE OR REPLACE FUNCTION delete_app_user(target_user_id INTEGER)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  target_email TEXT;
+  auth_uid UUID;
+BEGIN
+  -- Get the email of the user being deleted
+  SELECT email INTO target_email FROM public.users WHERE id = target_user_id;
+  IF target_email IS NULL THEN
+    RAISE EXCEPTION 'User not found';
+  END IF;
+
+  -- Find matching auth.users record by email
+  SELECT au.id INTO auth_uid FROM auth.users au WHERE au.email = target_email;
+
+  -- Delete from app users table
+  DELETE FROM public.users WHERE id = target_user_id;
+
+  -- Delete from Supabase auth.users (if exists)
+  IF auth_uid IS NOT NULL THEN
+    DELETE FROM auth.users WHERE id = auth_uid;
+  END IF;
+END;
+$$;
+
 -- ────────────────────────────────────────────────────────────
 -- 3. SEED DATA: Sales Stages
 -- ────────────────────────────────────────────────────────────

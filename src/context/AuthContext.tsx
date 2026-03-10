@@ -205,7 +205,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Protect exec from removal
     const target = allUsers.find(u => u.id === userId);
     if (target?.role === 'exec') return 'Cannot remove the exec account.';
-    const { error } = await supabase.from('users').update({ is_active: false }).eq('id', userId);
+    // Hard delete from both app users table and Supabase auth.users
+    const { error } = await supabase.rpc('delete_app_user', { target_user_id: userId });
     if (error) return error.message;
     setAllUsers(prev => prev.filter(u => u.id !== userId));
     return null;
