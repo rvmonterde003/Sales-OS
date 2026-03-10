@@ -224,12 +224,28 @@ AS $$
 DECLARE
   target_email TEXT;
   auth_uid UUID;
+  exec_id INTEGER;
 BEGIN
   -- Get the email of the user being deleted
   SELECT email INTO target_email FROM public.users WHERE id = target_user_id;
   IF target_email IS NULL THEN
     RAISE EXCEPTION 'User not found';
   END IF;
+
+  -- Find the exec user to reassign data to
+  SELECT id INTO exec_id FROM public.users WHERE role = 'exec' LIMIT 1;
+  IF exec_id IS NULL OR exec_id = target_user_id THEN
+    RAISE EXCEPTION 'Cannot delete the exec user';
+  END IF;
+
+  -- Reassign all data owned by the deleted user to exec
+  UPDATE public.companies SET owner_id = exec_id WHERE owner_id = target_user_id;
+  UPDATE public.opportunities SET owner_id = exec_id WHERE owner_id = target_user_id;
+  UPDATE public.activities SET logged_by = exec_id WHERE logged_by = target_user_id;
+  UPDATE public.stage_transitions SET transitioned_by = exec_id WHERE transitioned_by = target_user_id;
+  UPDATE public.invitations SET invited_by = exec_id WHERE invited_by = target_user_id;
+  UPDATE public.qualification_checks SET qualified_by = exec_id WHERE qualified_by = target_user_id;
+  UPDATE public.inactivity_flags SET resolved_by = exec_id WHERE resolved_by = target_user_id;
 
   -- Find matching auth.users record by email
   SELECT au.id INTO auth_uid FROM auth.users au WHERE au.email = target_email;
