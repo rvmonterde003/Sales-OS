@@ -1,11 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { timeAgo, COMPANY_STATUSES, LEAD_STATUSES, DEAL_SOURCES } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import AddCompanyModal from '../components/AddCompanyModal';
-import { Search, Plus, SlidersHorizontal } from 'lucide-react';
+import { Search, Plus, SlidersHorizontal, Check } from 'lucide-react';
+
+type CompanySort = 'name-az' | 'name-za' | 'newest' | 'oldest';
 
 export default function Companies() {
   const { companies, contacts, opportunities, getUserName } = useData();
@@ -15,11 +17,22 @@ export default function Companies() {
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [showAdd, setShowAdd] = useState(false);
+  const [sortBy, setSortBy] = useState<CompanySort>('name-az');
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const sources = useMemo(() => [...new Set(companies.map(c => c.source).filter(Boolean))], [companies]);
 
   const filtered = useMemo(() => {
-    return companies.filter(c => {
+    const result = companies.filter(c => {
       const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
         (c.industry || '').toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
@@ -27,7 +40,14 @@ export default function Companies() {
       const matchesSource = sourceFilter === 'all' || c.source === sourceFilter;
       return matchesSearch && matchesStatus && matchesLead && matchesSource;
     });
-  }, [companies, search, statusFilter, leadStatusFilter, sourceFilter]);
+    switch (sortBy) {
+      case 'name-az': return result.sort((a, b) => a.name.localeCompare(b.name));
+      case 'name-za': return result.sort((a, b) => b.name.localeCompare(a.name));
+      case 'newest': return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case 'oldest': return result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      default: return result;
+    }
+  }, [companies, search, statusFilter, leadStatusFilter, sourceFilter, sortBy]);
 
   const activeFilters = [
     statusFilter !== 'all' ? { label: `Status: ${statusFilter}`, clear: () => setStatusFilter('all') } : null,
@@ -45,9 +65,29 @@ export default function Companies() {
             </span>
             All Law Firms
           </button>
-          <button className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
-            <SlidersHorizontal className="w-3 h-3" /> View settings
-          </button>
+          <div className="relative" ref={settingsRef}>
+            <button onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
+              <SlidersHorizontal className="w-3 h-3" /> View settings
+            </button>
+            {showSettings && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-[180px] py-1">
+                <div className="px-3 py-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wider">Sort by</div>
+                {([
+                  { value: 'name-az', label: 'Name A → Z' },
+                  { value: 'name-za', label: 'Name Z → A' },
+                  { value: 'newest', label: 'Newest first' },
+                  { value: 'oldest', label: 'Oldest first' },
+                ] as { value: CompanySort; label: string }[]).map(opt => (
+                  <button key={opt.value} onClick={() => { setSortBy(opt.value); setShowSettings(false); }}
+                    className="w-full text-left px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                    {opt.label}
+                    {sortBy === opt.value && <Check className="w-3 h-3 text-violet-600" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">

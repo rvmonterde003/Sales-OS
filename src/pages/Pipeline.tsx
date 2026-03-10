@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { formatCurrency } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
@@ -6,7 +6,9 @@ import StatusBadge from '../components/StatusBadge';
 import InlinePipelineControl from '../components/InlinePipelineControl';
 import ActivityLogModal from '../components/ActivityLogModal';
 import { Link } from 'react-router-dom';
-import { Clock, User, GripVertical } from 'lucide-react';
+import { Clock, User, GripVertical, SlidersHorizontal, Check } from 'lucide-react';
+
+type PipelineSort = 'newest' | 'oldest' | 'company-az' | 'company-za' | 'value-high' | 'value-low';
 
 export default function Pipeline() {
   const { opportunities, companies, contacts, salesStages, stageTransitions, moveToStage } = useData();
@@ -14,7 +16,18 @@ export default function Pipeline() {
   const [dragOppId, setDragOppId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<number | null>(null);
   const [pendingMove, setPendingMove] = useState<{ oppId: number; targetStageId: number } | null>(null);
+  const [sortBy, setSortBy] = useState<PipelineSort>('newest');
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   // Only show opportunities for qualified (or customer) companies
   const qualifiedOpps = opportunities.filter(o => {
@@ -73,13 +86,85 @@ export default function Pipeline() {
             </span>
             Pipeline View
           </button>
+          <div className="relative" ref={settingsRef}>
+            <button onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
+              <SlidersHorizontal className="w-3 h-3" /> View settings
+            </button>
+            {showSettings && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-[200px] py-1">
+                <div className="px-3 py-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wider">Sort by</div>
+                {([
+                  { value: 'newest', label: 'Newest first' },
+                  { value: 'oldest', label: 'Oldest first' },
+                  { value: 'company-az', label: 'Company A → Z' },
+                  { value: 'company-za', label: 'Company Z → A' },
+                  { value: 'value-high', label: 'Value high → low' },
+                  { value: 'value-low', label: 'Value low → high' },
+                ] as { value: PipelineSort; label: string }[]).map(opt => (
+                  <button key={opt.value} onClick={() => { setSortBy(opt.value); setShowSettings(false); }}
+                    className="w-full text-left px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                    {opt.label}
+                    {sortBy === opt.value && <Check className="w-3 h-3 text-violet-600" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-x-auto overflow-y-auto p-4">
         <div className="flex gap-3 min-h-full">
+          {/* Leads column — MQL & SQL companies, static / non-draggable */}
+          {(() => {
+            const leads = companies.filter(c => c.lead_status === 'MQL' || c.lead_status === 'SQL').sort((a, b) => {
+              switch (sortBy) {
+                case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                case 'company-az': return a.name.localeCompare(b.name);
+                case 'company-za': return b.name.localeCompare(a.name);
+                default: return a.name.localeCompare(b.name);
+              }
+            });
+            return (
+              <div className="flex-shrink-0 w-[220px] flex flex-col rounded-lg bg-gray-100/80">
+                <div className="px-3 py-2.5 mb-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[12px] font-semibold text-gray-500">Leads</h3>
+                    <span className="text-[11px] text-gray-400 font-medium">{leads.length}</span>
+                  </div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">MQL &amp; SQL — qualify to move to pipeline</div>
+                </div>
+                <div className="flex-1 space-y-1.5 px-1.5 pb-2 min-h-[100px] overflow-y-auto max-h-[calc(100vh-180px)]">
+                  {leads.map(c => (
+                    <Link key={c.id} to={`/companies/${c.id}`}
+                      className="block bg-gray-200/70 hover:bg-gray-300/70 rounded-md px-2.5 py-2 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-medium text-gray-700 truncate">{c.name}</span>
+                        <StatusBadge status={c.lead_status} variant="tag" />
+                      </div>
+                      {c.industry && <div className="text-[10px] text-gray-500 mt-0.5 truncate">{c.industry}</div>}
+                    </Link>
+                  ))}
+                  {leads.length === 0 && <div className="text-center py-6 text-[11px] text-gray-400">No leads</div>}
+                </div>
+              </div>
+            );
+          })()}
+
           {nonTerminalStages.map(stage => {
-            const stageOpps = qualifiedOpps.filter(o => o.stage_id === stage.id && !o.closed_at);
+            const stageOpps = qualifiedOpps.filter(o => o.stage_id === stage.id && !o.closed_at).sort((a, b) => {
+              switch (sortBy) {
+                case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                case 'company-az': return (companies.find(c => c.id === a.company_id)?.name || '').localeCompare(companies.find(c => c.id === b.company_id)?.name || '');
+                case 'company-za': return (companies.find(c => c.id === b.company_id)?.name || '').localeCompare(companies.find(c => c.id === a.company_id)?.name || '');
+                case 'value-high': return b.deal_value - a.deal_value;
+                case 'value-low': return a.deal_value - b.deal_value;
+                default: return 0;
+              }
+            });
             const stageTotal = stageOpps.reduce((sum, o) => sum + o.deal_value, 0);
             const isDropping = dropTarget === stage.id && dragOppId !== null;
 

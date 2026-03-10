@@ -1,10 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import AddContactModal from '../components/AddContactModal';
-import { Search, Plus, SlidersHorizontal, Linkedin } from 'lucide-react';
+import { Search, Plus, SlidersHorizontal, Linkedin, Check } from 'lucide-react';
+
+type ContactSort = 'name-az' | 'name-za' | 'newest' | 'oldest' | 'company-az';
 
 export default function Contacts() {
   const { contacts, companies } = useData();
@@ -12,9 +14,20 @@ export default function Contacts() {
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [roleFilter, setRoleFilter] = useState('');
+  const [sortBy, setSortBy] = useState<ContactSort>('name-az');
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const filtered = useMemo(() => {
-    return contacts.filter(c => {
+    const result = contacts.filter(c => {
       const fullName = `${c.first_name} ${c.last_name}`.toLowerCase();
       const company = companies.find(cm => cm.id === c.company_id);
       const matchesSearch = !search || fullName.includes(search.toLowerCase()) ||
@@ -23,7 +36,15 @@ export default function Contacts() {
       const matchesRole = !roleFilter || c.role === roleFilter;
       return matchesSearch && matchesRole;
     });
-  }, [contacts, companies, search, roleFilter]);
+    switch (sortBy) {
+      case 'name-az': return result.sort((a, b) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`));
+      case 'name-za': return result.sort((a, b) => `${b.last_name} ${b.first_name}`.localeCompare(`${a.last_name} ${a.first_name}`));
+      case 'newest': return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case 'oldest': return result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      case 'company-az': return result.sort((a, b) => (companies.find(c => c.id === a.company_id)?.name || '').localeCompare(companies.find(c => c.id === b.company_id)?.name || ''));
+      default: return result;
+    }
+  }, [contacts, companies, search, roleFilter, sortBy]);
 
   const roles = useMemo(() => [...new Set(contacts.map(c => c.role).filter(Boolean))], [contacts]);
 
@@ -37,9 +58,30 @@ export default function Contacts() {
             </span>
             All People
           </button>
-          <button className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
-            <SlidersHorizontal className="w-3 h-3" /> View settings
-          </button>
+          <div className="relative" ref={settingsRef}>
+            <button onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
+              <SlidersHorizontal className="w-3 h-3" /> View settings
+            </button>
+            {showSettings && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-[180px] py-1">
+                <div className="px-3 py-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wider">Sort by</div>
+                {([
+                  { value: 'name-az', label: 'Name A → Z' },
+                  { value: 'name-za', label: 'Name Z → A' },
+                  { value: 'company-az', label: 'Company A → Z' },
+                  { value: 'newest', label: 'Newest first' },
+                  { value: 'oldest', label: 'Oldest first' },
+                ] as { value: ContactSort; label: string }[]).map(opt => (
+                  <button key={opt.value} onClick={() => { setSortBy(opt.value); setShowSettings(false); }}
+                    className="w-full text-left px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                    {opt.label}
+                    {sortBy === opt.value && <Check className="w-3 h-3 text-violet-600" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
