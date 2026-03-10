@@ -46,7 +46,7 @@ function AuthGate() {
             <Route path="/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/activities" element={<ActivitiesPage />} />
             <Route path="/risk-flags" element={<RiskFlags />} />
-            <Route path="/definitions" element={<SettingsPage />} />
+            <Route path="/how-to" element={<SettingsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Routes>

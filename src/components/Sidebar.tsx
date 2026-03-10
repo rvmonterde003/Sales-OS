@@ -11,6 +11,7 @@ import {
   MessageSquare,
   TrendingUp,
   LogOut,
+  HelpCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -82,6 +83,11 @@ export default function Sidebar() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* How To */}
+        <div className="px-3 pb-1">
+          <SidebarLink to="/how-to" icon={HelpCircle} label="How To" active={isActive('/how-to')} />
         </div>
 
         {/* Footer: Profile */}

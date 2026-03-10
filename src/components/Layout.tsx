@@ -1,6 +1,6 @@
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { RefreshCw, HelpCircle } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
 const routeTitles: Record<string, { title: string }> = {
@@ -10,8 +10,9 @@ const routeTitles: Record<string, { title: string }> = {
   '/contacts': { title: 'People' },
   '/activities': { title: 'Activities' },
   '/risk-flags': { title: 'Risk Flags' },
-  '/definitions': { title: 'Definitions' },
+  '/how-to': { title: 'How To' },
   '/profile': { title: 'Profile' },
+  '/revenue': { title: 'Revenue Timeline' },
 };
 
 export default function Layout() {
@@ -45,13 +46,6 @@ export default function Layout() {
               <RefreshCw className="w-3 h-3" />
               Refresh
             </button>
-            <Link
-              to="/definitions"
-              className="flex items-center gap-1.5 text-[12px] text-gray-500 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              Definitions
-            </Link>
           </div>
         </header>
         {/* Page content */}
