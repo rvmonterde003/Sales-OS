@@ -6,7 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import InlinePipelineControl from '../components/InlinePipelineControl';
 import ActivityLogModal from '../components/ActivityLogModal';
 import { Link } from 'react-router-dom';
-import { Clock, User, SlidersHorizontal, Filter, GripVertical } from 'lucide-react';
+import { Clock, User, Filter, GripVertical } from 'lucide-react';
 
 export default function Pipeline() {
   const { opportunities, companies, contacts, salesStages, stageTransitions, moveToStage } = useData();
@@ -16,17 +16,30 @@ export default function Pipeline() {
   const [pendingMove, setPendingMove] = useState<{ oppId: number; targetStageId: number } | null>(null);
   const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
 
-  const pendingOpp = pendingMove ? opportunities.find(o => o.id === pendingMove.oppId) : null;
+  // Only show opportunities for qualified (or customer) companies
+  const qualifiedOpps = opportunities.filter(o => {
+    const company = companies.find(c => c.id === o.company_id);
+    return company && (company.lead_status === 'Qualified' || company.status === 'Customer');
+  });
+
+  const pendingOpp = pendingMove ? qualifiedOpps.find(o => o.id === pendingMove.oppId) : null;
 
   const handleDragStart = (oppId: number) => setDragOppId(oppId);
   const handleDragOver = (e: React.DragEvent, stageId: number) => { e.preventDefault(); setDropTarget(stageId); };
   const handleDragLeave = () => setDropTarget(null);
   const handleDrop = (targetStageId: number) => {
     if (dragOppId) {
-      const opp = opportunities.find(o => o.id === dragOppId);
-      // Only prompt if actually changing stage
+      const opp = qualifiedOpps.find(o => o.id === dragOppId);
       if (opp && opp.stage_id !== targetStageId) {
-        setPendingMove({ oppId: dragOppId, targetStageId });
+        // Only allow moving one stage at a time (adjacent stages)
+        const currentStage = salesStages.find(s => s.id === opp.stage_id);
+        const targetStage = salesStages.find(s => s.id === targetStageId);
+        if (currentStage && targetStage) {
+          const diff = targetStage.stage_order - currentStage.stage_order;
+          if (diff === 1 || diff === -1) {
+            setPendingMove({ oppId: dragOppId, targetStageId });
+          }
+        }
       }
     }
     setDragOppId(null);
@@ -60,10 +73,7 @@ export default function Pipeline() {
             </span>
             Pipeline View
           </button>
-          <button className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
-            <SlidersHorizontal className="w-3 h-3" /> View settings
-          </button>
-          <button className="flex items-center gap-1.5 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
+<button className="flex items-center gap-1.5 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
             <Filter className="w-3 h-3" /> Filter
           </button>
         </div>
@@ -72,7 +82,7 @@ export default function Pipeline() {
       <div className="flex-1 overflow-x-auto overflow-y-auto p-4">
         <div className="flex gap-3 min-h-full">
           {nonTerminalStages.map(stage => {
-            const stageOpps = opportunities.filter(o => o.stage_id === stage.id && !o.closed_at);
+            const stageOpps = qualifiedOpps.filter(o => o.stage_id === stage.id && !o.closed_at);
             const stageTotal = stageOpps.reduce((sum, o) => sum + o.deal_value, 0);
             const isDropping = dropTarget === stage.id && dragOppId !== null;
 

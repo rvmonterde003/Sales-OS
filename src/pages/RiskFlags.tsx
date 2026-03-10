@@ -11,8 +11,13 @@ export default function RiskFlags() {
   const { canCreate } = useRole();
   const [resolvingFlag, setResolvingFlag] = useState<number | null>(null);
 
-  const openFlags = inactivityFlags.filter(f => !f.resolved_at);
-  const resolvedFlags = inactivityFlags.filter(f => f.resolved_at);
+  // Only show flags for qualified/customer companies
+  const qualifiedFlags = inactivityFlags.filter(f => {
+    const company = companies.find(c => c.id === f.company_id);
+    return company && (company.lead_status === 'Qualified' || company.status === 'Customer');
+  });
+  const openFlags = qualifiedFlags.filter(f => !f.resolved_at);
+  const resolvedFlags = qualifiedFlags.filter(f => f.resolved_at);
 
   // Get the flag being resolved to pass context to activity modal
   const flagBeingResolved = resolvingFlag ? inactivityFlags.find(f => f.id === resolvingFlag) : null;
@@ -126,14 +131,14 @@ export default function RiskFlags() {
                 </tr>
               );
             })}
-            {inactivityFlags.length === 0 && (
+            {qualifiedFlags.length === 0 && (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-[13px] text-gray-400">No risk flags</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="border-t border-gray-200 px-5 py-2 bg-white text-[12px] text-gray-400 shrink-0">{inactivityFlags.length} count</div>
+      <div className="border-t border-gray-200 px-5 py-2 bg-white text-[12px] text-gray-400 shrink-0">{qualifiedFlags.length} count</div>
 
       <ActivityLogModal
         isOpen={!!resolvingFlag}

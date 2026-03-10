@@ -79,9 +79,12 @@ export default function ActivityLogModal({ isOpen, onClose, onSubmitted, default
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId) return;
+    if (!companyId || submitting) return;
+    setSubmitting(true);
     await addActivity({
       company_id: companyId as number,
       contact_id: contactId || null,
@@ -91,6 +94,7 @@ export default function ActivityLogModal({ isOpen, onClose, onSubmitted, default
       attachments: attachments.length > 0 ? attachments : undefined,
     });
     onSubmitted?.();
+    setSubmitting(false);
     onClose();
   };
 
@@ -187,9 +191,9 @@ export default function ActivityLogModal({ isOpen, onClose, onSubmitted, default
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose}
               className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md transition-colors">Cancel</button>
-            <button type="submit" disabled={!companyId || uploading}
+            <button type="submit" disabled={!companyId || uploading || submitting}
               className="px-3 py-1.5 text-[13px] bg-violet-600 text-white rounded-md hover:bg-violet-700 disabled:opacity-40 transition-colors">
-              Log Activity
+              {submitting ? 'Saving...' : 'Log Activity'}
             </button>
           </div>
         </form>

@@ -29,7 +29,10 @@ interface DataContextType {
   addCompany: (c: { name: string; industry?: string; firm_size?: string; website?: string; source?: string; }) => Promise<DbCompany | null>;
   updateCompanyLeadStatus: (companyId: number, status: DbCompany['lead_status'], unqualifyReason?: string) => Promise<void>;
   addContact: (c: { company_id: number; first_name: string; last_name: string; email?: string; phone?: string; title?: string; role?: string; linkedin_url?: string; }) => Promise<DbContact | null>;
+  updateContact: (id: number, fields: Partial<DbContact>) => Promise<void>;
+  deleteContact: (id: number) => Promise<void>;
   addActivity: (a: { company_id: number; contact_id?: number | null; related_opportunity_id?: number | null; activity_type: string; notes?: string; activity_timestamp?: string; attachments?: { name: string; url: string; type: string }[]; }) => Promise<void>;
+  updateDealValue: (oppId: number, newValue: number) => Promise<void>;
   addOpportunity: (o: { company_id: number; opportunity_type: string; service_description: string; deal_value: number; source: string; expected_close_date: string; primary_contact_id?: number | null; notes?: string; }) => Promise<DbOpportunity | null>;
   updateOpportunity: (id: number, fields: Partial<DbOpportunity>) => Promise<void>;
   moveToStage: (oppId: number, targetStageId: number, notes?: string) => Promise<boolean>;
@@ -203,6 +206,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return data ?? null;
   }, []);
 
+  const updateContact = useCallback(async (id: number, fields: Partial<DbContact>) => {
+    const { data, error } = await supabase.from('contacts').update(fields).eq('id', id).select().single();
+    if (!error && data) {
+      setContacts(prev => prev.map(c => c.id === id ? data : c));
+    }
+  }, []);
+
+  const deleteContact = useCallback(async (id: number) => {
+    const { error } = await supabase.from('contacts').delete().eq('id', id);
+    if (!error) {
+      setContacts(prev => prev.filter(c => c.id !== id));
+    }
+  }, []);
+
   const addActivity = useCallback(async (a: {
     company_id: number;
     contact_id?: number | null;
@@ -270,6 +287,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setOpportunities(prev => prev.map(o => o.id === id ? data : o));
     }
   }, []);
+
+  const updateDealValue = useCallback(async (oppId: number, newValue: number) => {
+    if (!dbUser) return;
+    const opp = opportunities.find(o => o.id === oppId);
+    if (!opp) return;
+    const oldValue = opp.deal_value;
+    const { error } = await supabase.from('opportunities').update({ deal_value: newValue, updated_at: new Date().toISOString() }).eq('id', oppId);
+    if (error) return;
+    setOpportunities(prev => prev.map(o => o.id === oppId ? { ...o, deal_value: newValue, updated_at: new Date().toISOString() } : o));
+    // Log as activity
+    const { data: actData } = await supabase.from('activities').insert({
+      company_id: opp.company_id,
+      related_opportunity_id: oppId,
+      activity_type: 'Note' as const,
+      notes: `[PRICING] Deal value updated from $${oldValue.toLocaleString()} to $${newValue.toLocaleString()}`,
+      logged_by: dbUser.id,
+      activity_timestamp: new Date().toISOString(),
+    }).select().single();
+    if (actData) {
+      setActivities(prev => [actData, ...prev]);
+      setCompanies(prev => prev.map(c =>
+        c.id === opp.company_id ? { ...c, last_activity_at: actData.activity_timestamp } : c
+      ));
+    }
+  }, [dbUser, opportunities]);
 
   // Check if there's been an activity specifically tagged to this opportunity since the last stage transition
   const hasActivitySinceLastTransition = useCallback((oppId: number): boolean => {
@@ -498,8 +540,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       allCompanies: companies, allOpportunities: opportunities, allActivities: activities,
       loading,
       getStageById, getUserName,
-      addCompany, updateCompanyLeadStatus, addContact, addActivity, addOpportunity,
-      updateOpportunity, moveToStage, pushbackStage, closeOpportunity, reopenOpportunity,
+      addCompany, updateCompanyLeadStatus, addContact, updateContact, deleteContact, addActivity,
+      updateDealValue, addOpportunity, updateOpportunity, moveToStage, pushbackStage, closeOpportunity, reopenOpportunity,
       saveQualification, resolveFlag, hasActivitySinceLastTransition,
       refreshData: fetchAll,
     }}>

@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function AddContactModal({ isOpen, onClose, defaultCompanyId }: Props) {
-  const { companies, addContact } = useData();
+  const { companies, contacts, addContact } = useData();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,14 +19,26 @@ export default function AddContactModal({ isOpen, onClose, defaultCompanyId }: P
   const [role, setRole] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [companyId, setCompanyId] = useState<number | ''>(defaultCompanyId || '');
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
-  const reset = () => { setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setTitle(''); setRole(''); setLinkedinUrl(''); setCompanyId(defaultCompanyId || ''); };
+  const reset = () => { setFirstName(''); setLastName(''); setEmail(''); setPhone(''); setTitle(''); setRole(''); setLinkedinUrl(''); setCompanyId(defaultCompanyId || ''); setError(''); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !companyId) return;
+    // Check for duplicate name within the same company
+    const duplicate = contacts.find(c =>
+      c.company_id === companyId &&
+      c.first_name.toLowerCase() === firstName.trim().toLowerCase() &&
+      c.last_name.toLowerCase() === lastName.trim().toLowerCase()
+    );
+    if (duplicate) {
+      setError('A contact with this name already exists at this company.');
+      return;
+    }
+    setError('');
     await addContact({
       company_id: companyId as number,
       first_name: firstName.trim(),
@@ -49,6 +61,7 @@ export default function AddContactModal({ isOpen, onClose, defaultCompanyId }: P
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
+          {error && <div className="text-[12px] text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{error}</div>}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[12px] font-medium text-gray-500 mb-1">First Name *</label>

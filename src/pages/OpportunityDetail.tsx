@@ -18,6 +18,7 @@ export default function OpportunityDetail() {
     stageTransitions, qualificationChecks, inactivityFlags,
     salesStages, lossReasons, getUserName,
     moveToStage, closeOpportunity, reopenOpportunity, pushbackStage, hasActivitySinceLastTransition,
+    updateDealValue,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [advancePending, setAdvancePending] = useState(false);
@@ -26,6 +27,8 @@ export default function OpportunityDetail() {
   const [closeNotes, setCloseNotes] = useState('');
   const [pushbackOpen, setPushbackOpen] = useState(false);
   const [pushbackReason, setPushbackReason] = useState('');
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState('');
 
   const { canEdit } = useRole();
   const opp = opportunities.find(o => o.id === oppId);
@@ -180,7 +183,29 @@ export default function OpportunityDetail() {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-[22px] font-bold text-gray-900">{formatCurrency(opp.deal_value)}</div>
+              {editingPrice ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[16px] text-gray-500">$</span>
+                  <input type="number" value={priceInput} onChange={e => setPriceInput(e.target.value)} autoFocus
+                    className="w-[140px] text-[18px] font-bold text-gray-900 border border-gray-300 rounded-md px-2 py-1 text-right focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                  <button onClick={async () => {
+                    const val = parseFloat(priceInput);
+                    if (!isNaN(val) && val >= 0) {
+                      await updateDealValue(opp.id, val);
+                    }
+                    setEditingPrice(false);
+                  }} className="text-[12px] bg-violet-600 text-white px-2 py-1 rounded-md hover:bg-violet-700">Save</button>
+                  <button onClick={() => setEditingPrice(false)} className="text-[12px] text-gray-500 hover:text-gray-700">Cancel</button>
+                </div>
+              ) : (
+                <div className="text-[22px] font-bold text-gray-900 flex items-center gap-2 justify-end">
+                  {formatCurrency(opp.deal_value)}
+                  {canEditThis && !isClosed && stage?.name === 'Negotiation' && (
+                    <button onClick={() => { setPriceInput(String(opp.deal_value)); setEditingPrice(true); }}
+                      className="text-[11px] text-violet-600 hover:text-violet-800 font-medium">Edit</button>
+                  )}
+                </div>
+              )}
               {opp.forecast_category && <StatusBadge status={opp.forecast_category} />}
             </div>
           </div>
