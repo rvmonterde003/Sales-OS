@@ -129,7 +129,9 @@ export default function Companies() {
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{company.industry || '--'}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.firm_size || '--'} variant="tag" /></td>
                   <td className="px-4 py-2.5">{company.source ? <StatusBadge status={company.source} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>}</td>
-                  <td className="px-4 py-2.5"><span className="text-violet-600 text-[12px]">{company.website || '--'}</span></td>
+                  <td className="px-4 py-2.5">{company.website ? (
+                    <a href={company.website.startsWith('http') ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:text-violet-800 hover:underline text-[12px]">{company.website}</a>
+                  ) : <span className="text-gray-300 text-[12px]">--</span>}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{timeAgo(company.last_activity_at)}</td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{companyContacts.length || ''}</td>
                   <td className="px-4 py-2.5 text-center text-gray-600">{openDeals.length || ''}</td>

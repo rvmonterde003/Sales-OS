@@ -167,9 +167,10 @@ export default function CompanyDetail() {
                     {company.industry && <StatusBadge status={company.industry} variant="tag" />}
                     {company.firm_size && <StatusBadge status={company.firm_size} variant="tag" />}
                     {company.website && (
-                      <span className="flex items-center gap-1 text-violet-600">
+                      <a href={company.website.startsWith('http') ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-violet-600 hover:text-violet-800 hover:underline">
                         <Globe className="w-3 h-3" />{company.website}
-                      </span>
+                      </a>
                     )}
                     {company.source && <StatusBadge status={company.source} variant="tag" />}
                   </div>

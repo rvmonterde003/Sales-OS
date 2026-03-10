@@ -6,7 +6,7 @@ import StatusBadge from '../components/StatusBadge';
 import InlinePipelineControl from '../components/InlinePipelineControl';
 import ActivityLogModal from '../components/ActivityLogModal';
 import { Link } from 'react-router-dom';
-import { Clock, User, Filter, GripVertical } from 'lucide-react';
+import { Clock, User, GripVertical } from 'lucide-react';
 
 export default function Pipeline() {
   const { opportunities, companies, contacts, salesStages, stageTransitions, moveToStage } = useData();
@@ -72,9 +72,6 @@ export default function Pipeline() {
               <span className="text-white text-[8px] font-bold">D</span>
             </span>
             Pipeline View
-          </button>
-<button className="flex items-center gap-1.5 text-[12px] text-gray-500 px-2 py-1 rounded hover:bg-gray-50">
-            <Filter className="w-3 h-3" /> Filter
           </button>
         </div>
       </div>
