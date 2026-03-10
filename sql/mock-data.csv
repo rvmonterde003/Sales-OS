@@ -1,0 +1,65 @@
+## USERS
+id,email,password_hash,first_name,last_name,role,is_active
+1,rommel@primelive.ai,,Mel,Monterde,exec,true
+2,nate@primelive.ai,,Nate,Geraldez,admin,true
+3,ginny@primelive.ai,,Ginny,Evangelista,rep,true
+4,evan@primelive.ai,,Evan,Magdadaro,rep,true
+
+## COMPANIES (Law Firms)
+id,name,industry,firm_size,website,source,status,lead_status,owner_id,owner_name
+1,Hartwell & Associates,Personal Injury,11-50,hartwelllaw.com,Inbound,Prospect,SQL,1,Mel Monterde
+2,Sterling Defense Group,Criminal Defense,11-50,sterlingdefense.com,Referral,Prospect,Qualified,1,Mel Monterde
+3,Baxter Family Law,Family Law,2-10,baxterfamilylaw.com,Outbound,Prospect,MQL,3,Ginny Evangelista
+4,Caldwell Immigration PLLC,Immigration,11-50,caldwellimmigration.com,Referral,Customer,Qualified,2,Nate Geraldez
+5,Rivera & Nguyen LLP,Employment Law,51-200,riveranguyen.com,Inbound,Prospect,SQL,3,Ginny Evangelista
+6,Pinnacle Estate Planning,Estate Planning,2-10,pinnacleestatelaw.com,Outbound,Prospect,MQL,4,Evan Magdadaro
+7,Blackstone Injury Lawyers,Personal Injury,51-200,blackstoneinjury.com,Inbound,Customer,Qualified,1,Mel Monterde
+8,Garrison & Park LLP,Corporate Law,51-200,garrisonpark.com,Event,Former,Unqualified,2,Nate Geraldez
+9,Torres Criminal Defense,Criminal Defense,11-50,torresdefense.com,Referral,Prospect,SQL,1,Mel Monterde
+10,Meridian Bankruptcy Law,Bankruptcy,2-10,meridianbankruptcy.com,Outbound,Prospect,MQL,4,Evan Magdadaro
+
+## CONTACTS
+id,company_id,company_name,first_name,last_name,email,phone,title,role
+1,1,Hartwell & Associates,Michael,Hartwell,mhartwell@hartwelllaw.com,+1-213-555-0101,Managing Partner,Decision Maker
+2,1,Hartwell & Associates,Karen,Orozco,korozco@hartwelllaw.com,+1-213-555-0102,Marketing Director,Champion
+3,2,Sterling Defense Group,James,Sterling,jsterling@sterlingdefense.com,+1-312-555-0201,Founding Partner,Decision Maker
+4,2,Sterling Defense Group,Priya,Desai,pdesai@sterlingdefense.com,+1-312-555-0202,Office Manager,Evaluator
+5,3,Baxter Family Law,Linda,Baxter,lbaxter@baxterfamilylaw.com,+1-602-555-0301,Solo Practitioner,Decision Maker
+6,4,Caldwell Immigration PLLC,Daniel,Caldwell,dcaldwell@caldwellimmigration.com,+1-305-555-0401,Managing Attorney,Decision Maker
+7,4,Caldwell Immigration PLLC,Sofia,Reyes,sreyes@caldwellimmigration.com,+1-305-555-0402,Intake Coordinator,Champion
+8,5,Rivera & Nguyen LLP,Angela,Rivera,arivera@riveranguyen.com,+1-415-555-0501,Senior Partner,Decision Maker
+9,6,Pinnacle Estate Planning,Howard,Finch,hfinch@pinnacleestatelaw.com,+1-480-555-0601,Principal Attorney,Decision Maker
+10,7,Blackstone Injury Lawyers,Victoria,Blackstone,vblackstone@blackstoneinjury.com,+1-214-555-0701,Senior Partner,Decision Maker
+11,7,Blackstone Injury Lawyers,Ryan,Matsuda,rmatsuda@blackstoneinjury.com,+1-214-555-0702,Marketing Manager,Champion
+12,8,Garrison & Park LLP,Theodore,Garrison,tgarrison@garrisonpark.com,+1-212-555-0801,Name Partner,Decision Maker
+13,9,Torres Criminal Defense,Marco,Torres,mtorres@torresdefense.com,+1-713-555-0901,Managing Partner,Decision Maker
+14,9,Torres Criminal Defense,Alicia,Vega,avega@torresdefense.com,+1-713-555-0902,Business Development,Champion
+15,10,Meridian Bankruptcy Law,Gregory,Owens,gowens@meridianbankruptcy.com,+1-404-555-1001,Principal,Decision Maker
+
+## QUALIFICATION_CHECKS (BANT)
+id,company_id,company_name,pain_and_value,timeline,budget_pricing_fit,person_in_position,qualified
+1,1,Hartwell & Associates,Page 5+ for target keywords — est. $300K/yr missed revenue,Q2 launch — want results in 90 days,$3500-$5000/mo approved,Managing Partner decides — Marketing Director is champion,Yes
+2,2,Sterling Defense Group,Zero Google presence for criminal defense keywords — all leads from referrals,Immediate — losing leads weekly,$4000/mo confirmed by partner,Founding Partner is decision maker and very engaged,Yes
+3,4,Caldwell Immigration PLLC,No blog or local SEO — 60% of callers found competitors first,Already a client — started 2 months ago,$3000/mo active — upsell to $4500 for PPC,Managing Attorney approves all spend,Yes
+4,5,Rivera & Nguyen LLP,8 attorneys but only 200 organic visits/mo — competitor ranks #1,Within 60 days — partners meeting end of month,$5K-$7K/mo likely — need partnership buy-in,Senior Partner interested but needs partner consensus,No
+5,7,Blackstone Injury Lawyers,Only 200 organic visits — paying $15K/mo PPC with poor conversion,Next quarter — want to reduce PPC by Q3,$6000/mo approved — reallocating from PPC,Senior Partner authorized — Marketing Manager driving it,Yes
+6,9,Torres Criminal Defense,Zero organic traffic — $8K/mo on ads unsustainable,ASAP — ad costs unsustainable,$3500/mo confirmed — can go to $4K with content,Managing Partner is sole decision maker,Yes
+
+## OPPORTUNITIES
+id,company_id,company_name,contact,stage,type,service_description,deal_value,forecast_category,expected_close,contract_value,owner,status
+1,1,Hartwell & Associates,Michael Hartwell,Evaluation,New,Full SEO + local SEO package,42000.00,Pipeline,2026-05-15,,Mel Monterde,Open
+2,2,Sterling Defense Group,James Sterling,Proposal,New,SEO retainer + content marketing,48000.00,Best Case,2026-04-01,,Mel Monterde,Open
+3,3,Baxter Family Law,Linda Baxter,Discovery,New,Website SEO audit + local search optimization,18000.00,Pipeline,2026-06-30,,Ginny Evangelista,Open
+4,5,Rivera & Nguyen LLP,Angela Rivera,Discovery,New,Enterprise SEO strategy — multi-location,84000.00,Pipeline,2026-07-15,,Ginny Evangelista,Open
+5,9,Torres Criminal Defense,Marco Torres,Evaluation,New,SEO + PPC transition plan,42000.00,Best Case,2026-05-30,,Mel Monterde,Open
+6,6,Pinnacle Estate Planning,Howard Finch,Discovery,New,Local SEO + content strategy for estate planning,24000.00,Pipeline,2026-08-01,,Evan Magdadaro,Open
+7,10,Meridian Bankruptcy Law,Gregory Owens,Discovery,New,SEO foundation package — audit + GBP setup,21000.00,Pipeline,2026-09-01,,Evan Magdadaro,Open
+8,4,Caldwell Immigration PLLC,Daniel Caldwell,Won,New,Full SEO retainer — bilingual content + 3 locations,36000.00,Commit,2026-02-15,36000.00,Nate Geraldez,Won
+9,7,Blackstone Injury Lawyers,Victoria Blackstone,Won,New,SEO + content marketing + PPC transition,72000.00,Commit,2026-02-28,72000.00,Mel Monterde,Won
+10,8,Garrison & Park LLP,Theodore Garrison,Loss,New,SEO and digital marketing overhaul for corporate law,60000.00,,2026-01-31,,Nate Geraldez,Lost — Price too high
+
+## INVITATIONS
+id,email,role,invited_by,accepted
+1,nate@primelive.ai,admin,Mel Monterde,Yes
+2,ginny@primelive.ai,rep,Mel Monterde,Yes
+3,evan@primelive.ai,rep,Mel Monterde,Yes

@@ -291,7 +291,7 @@ export default function CompanyDetail() {
                   return (
                     <div key={opp.id}
                       onClick={() => navigate(`/opportunities/${opp.id}`)}
-                      className="border border-gray-200 rounded-lg p-3 cursor-pointer transition-colors hover:bg-gray-900 hover:border-gray-900 group/card">
+                      className="border border-gray-200 rounded-lg p-3 cursor-pointer shadow-sm hover:shadow-md transition-all hover:bg-gray-900 hover:border-gray-900 group/card">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-[12px] font-medium text-gray-900 group-hover/card:text-white">{stage?.name}</span>
