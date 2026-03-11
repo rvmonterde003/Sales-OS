@@ -27,7 +27,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-white">
       <Sidebar />
-      <div className="ml-[232px] flex-1 flex flex-col min-h-screen">
+      <div className="ml-[232px] flex-1 flex flex-col min-h-screen overflow-hidden">
         {/* Top bar */}
         <header className="h-[46px] border-b border-gray-200 flex items-center justify-between px-5 bg-white shrink-0 sticky top-0 z-40">
           <div className="flex items-center gap-2 text-[13px]">
@@ -50,7 +50,7 @@ export default function Layout() {
           </div>
         </header>
         {/* Page content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto min-w-0">
           <Outlet />
         </main>
       </div>

@@ -7,7 +7,7 @@ import { Search, SlidersHorizontal, Linkedin, Check } from 'lucide-react';
 type ContactSort = 'name-az' | 'name-za' | 'newest' | 'oldest' | 'company-az';
 
 export default function Contacts() {
-  const { contacts, companies } = useData();
+  const { contacts, companies, opportunities, salesStages } = useData();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [sortBy, setSortBy] = useState<ContactSort>('name-az');
@@ -43,6 +43,29 @@ export default function Contacts() {
   }, [contacts, companies, search, roleFilter, sortBy]);
 
   const roles = useMemo(() => [...new Set(contacts.map(c => c.role).filter(Boolean))], [contacts]);
+
+  const getContactStatus = (companyId: number): string => {
+    const company = companies.find(c => c.id === companyId);
+    if (!company) return '--';
+    const companyOpps = opportunities.filter(o => o.company_id === companyId);
+    if (companyOpps.length === 0) return company.lead_status;
+    // Prefer active (non-closed) opportunities, pick the most advanced stage
+    const activeOpps = companyOpps.filter(o => !o.closed_at);
+    if (activeOpps.length > 0) {
+      const best = activeOpps.reduce((a, b) => {
+        const aOrder = salesStages.find(s => s.id === a.stage_id)?.stage_order ?? 0;
+        const bOrder = salesStages.find(s => s.id === b.stage_id)?.stage_order ?? 0;
+        return bOrder > aOrder ? b : a;
+      });
+      return salesStages.find(s => s.id === best.stage_id)?.name ?? company.lead_status;
+    }
+    // All closed — show Won if any won, otherwise Lost
+    const hasWon = companyOpps.some(o => {
+      const stage = salesStages.find(s => s.id === o.stage_id);
+      return stage?.name === 'Won';
+    });
+    return hasWon ? 'Won' : 'Loss';
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -101,8 +124,8 @@ export default function Contacts() {
             <tr className="border-b border-gray-200 bg-gray-50/60">
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Name</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Company</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Title</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Role</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Source</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Status</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Email</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Phone</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">LinkedIn</th>
@@ -126,9 +149,12 @@ export default function Contacts() {
                       </Link>
                     ) : <span className="text-gray-300 text-[12px]">--</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-gray-600 text-[12px]">{contact.title || '--'}</td>
+                  <td className="px-4 py-2.5 text-gray-600 text-[12px]">{company?.source || '--'}</td>
                   <td className="px-4 py-2.5">
-                    {contact.role ? <StatusBadge status={contact.role} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>}
+                    {(() => {
+                      const status = getContactStatus(contact.company_id);
+                      return status !== '--' ? <StatusBadge status={status} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.email || '--'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.phone || '--'}</td>
