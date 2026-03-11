@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useData } from '../context/DataContext';
 import {
-  Building2, UserCheck, ClipboardCheck, Briefcase, ArrowRight,
-  Trophy, XCircle, MessageSquarePlus, BookOpen, ListChecks,
+  UserPlus, UserCheck, ClipboardCheck, Briefcase, ArrowRight,
+  Trophy, XCircle, MessageSquarePlus, BookOpen, ListChecks, Building2,
 } from 'lucide-react';
 
 type Tab = 'guide' | 'definitions';
@@ -38,63 +38,69 @@ export default function SettingsPage() {
 function GuideTab() {
   const steps = [
     {
-      icon: Building2,
-      color: 'bg-purple-100 text-purple-700',
-      title: '1. Create a Company',
-      description: 'Go to Companies and click "New Law Firm". Fill in the firm name, industry, size, source, and website. The company starts as a Prospect with MQL lead status.',
+      icon: UserPlus,
+      color: 'bg-cyan-100 text-cyan-700',
+      title: '1. Create a Lead',
+      description: 'Go to the Leads tab and click "New Lead". Enter the contact\'s first name, last name, and optionally their email, phone, LinkedIn, and lead source. The lead starts at MQL stage — no firm name is needed yet.',
     },
     {
       icon: MessageSquarePlus,
       color: 'bg-blue-100 text-blue-700',
       title: '2. Log Activities',
-      description: 'Log calls, emails, meetings, and notes from any company, contact, or deal page. Activities are tracked against the company and optionally linked to a specific opportunity or contact. Attach files or links as needed.',
-    },
-    {
-      icon: UserCheck,
-      color: 'bg-green-100 text-green-700',
-      title: '3. Add Contacts',
-      description: 'Inside a company, click "Add Contact" to add people at the firm. Specify their name, title, role (Decision Maker, Operations, etc.), email, phone, and LinkedIn.',
+      description: 'Log calls, emails, meetings, and notes from any lead, law firm, or deal page. Activities are tracked against the company and optionally linked to a specific opportunity or contact. Attach files or links as needed.',
     },
     {
       icon: ArrowRight,
       color: 'bg-indigo-100 text-indigo-700',
-      title: '4. Move to SQL',
-      description: 'When a lead shows interest, click "Move to SQL" on the company page. This unlocks the qualification form where you document the prospect\'s pain, timeline, budget, and decision maker.',
+      title: '3. Move to SQL',
+      description: 'When a lead shows interest, open the lead detail and click "Move to SQL". This unlocks the firm information form (Firm Name, Industry, Firm Size, Website) and the BANT qualification fields.',
+    },
+    {
+      icon: Building2,
+      color: 'bg-purple-100 text-purple-700',
+      title: '4. Add Firm Information',
+      description: 'At SQL stage, fill in the Firm Name and details (Industry, Firm Size, Website). Click "Save Firm Info" to update. This is where the contact gets associated with an actual law firm.',
     },
     {
       icon: ClipboardCheck,
       color: 'bg-emerald-100 text-emerald-700',
-      title: '5. Qualify the Company',
-      description: 'Fill in all 4 qualification fields (Pain & Value, Timeline, Budget/Pricing Fit, Person in Position). Once all are filled, click "Save Qualification" to auto-qualify the company. You can also save partial progress as a draft. If the lead is not a fit, click "Unqualify" with a reason.',
+      title: '5. Qualify the Lead',
+      description: 'Fill in all 4 BANT qualification fields (Pain & Value, Timeline, Budget/Pricing Fit, Person in Position). Once all are filled, click "Save Qualification" to auto-qualify. You can save partial progress as a draft. If the lead is not a fit, click "Unqualify" with a reason.',
     },
     {
       icon: Briefcase,
       color: 'bg-orange-100 text-orange-700',
       title: '6. Create an Opportunity',
-      description: 'Once qualified, click "Create Opportunity" on the company page. Set the service description, deal value, type (New Business / Upsell / Renewal), source, expected close date, and primary contact. The deal starts at the Discovery stage.',
+      description: 'Once qualified, the "Create Opportunity" modal opens automatically. Set the service description, deal value, type (New/Upsell/Renewal/Pilot), source, expected close date, and primary contact. Once saved, the lead moves to the Law Firms tab and enters the pipeline at Discovery.',
+    },
+    {
+      icon: UserCheck,
+      color: 'bg-green-100 text-green-700',
+      title: '7. Add More Contacts',
+      description: 'Inside a law firm\'s detail page, click "Add Contact" to add more people at the firm. Specify their name, title, role (Decision Maker, Champion, etc.), email, phone, and LinkedIn.',
     },
     {
       icon: ArrowRight,
       color: 'bg-violet-100 text-violet-700',
-      title: '7. Advance Through the Pipeline',
-      description: 'Deals move through: Discovery → Demonstration/Audit → Evaluation → Proposal → Negotiation → Contract → Verbal. To advance, log an activity first then click "Advance Stage". You can also drag cards in the Deals kanban board (one stage at a time). During Negotiation, you can edit the deal value which gets logged automatically.',
+      title: '8. Advance Through the Pipeline',
+      description: 'Deals move through: Discovery → Demonstration/Audit → Evaluation → Proposal → Negotiation → Contract → Verbal. To advance, log an activity first, then drag the card one stage forward in the Deals kanban (an activity log is required). During Negotiation, you can edit the deal value.',
     },
     {
       icon: ArrowRight,
       color: 'bg-amber-100 text-amber-700',
-      title: '8. Push Back a Stage',
+      title: '9. Push Back a Stage',
       description: 'If a deal needs to go back, click "Push Back" and select a reason. This moves the deal one stage back and auto-logs the pushback with the reason.',
     },
     {
       icon: Trophy,
       color: 'bg-emerald-100 text-emerald-700',
-      title: '9. Mark as Won',
+      title: '10. Mark as Won',
       description: 'When the deal reaches Verbal stage, click "Mark Won" to close it. The company status changes to Customer, contract dates are set, and the deal appears in the Revenue Timeline.',
     },
     {
       icon: XCircle,
       color: 'bg-red-100 text-red-700',
-      title: '10. Mark as Lost',
+      title: '11. Mark as Lost',
       description: 'If a deal falls through at any stage, click "Mark Lost" and select a standardized loss reason with optional notes. Lost deals can be reopened later if the situation changes.',
     },
   ];
@@ -123,10 +129,13 @@ function GuideTab() {
       <div className="mt-6 p-4 bg-violet-50 border border-violet-200 rounded-lg">
         <h3 className="text-[13px] font-semibold text-violet-900 mb-2">Tips</h3>
         <ul className="space-y-1.5 text-[12px] text-violet-800">
-          <li>- Use the <strong>Deals</strong> tab for a kanban view of your entire pipeline. The Leads column shows MQL/SQL companies that need qualifying first.</li>
+          <li>- New leads start as contacts in the <strong>Leads</strong> tab. Firm name and details are added during SQL qualification.</li>
+          <li>- Once a lead is qualified and has an opportunity, it automatically moves to the <strong>Law Firms</strong> tab.</li>
+          <li>- Use the <strong>Deals</strong> tab for a kanban view of your pipeline. Drag cards one stage at a time (activity log required).</li>
           <li>- <strong>Risk Flags</strong> alert you to stale deals and inactive companies. Resolve them by logging activity.</li>
           <li>- <strong>Revenue Timeline</strong> shows won deals over time and team performance breakdown.</li>
-          <li>- <strong>View Settings</strong> on Companies, Contacts, and Deals let you sort by name, date, or value.</li>
+          <li>- <strong>View Settings</strong> on Law Firms, Contacts, and Deals let you sort by name, date, or value.</li>
+          <li>- Add more contacts to a firm from the law firm detail page using "Add Contact".</li>
           <li>- Admins can manage team members, change roles, and send invitations from the <strong>Profile</strong> page.</li>
         </ul>
       </div>

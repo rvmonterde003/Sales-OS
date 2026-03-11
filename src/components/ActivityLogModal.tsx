@@ -93,7 +93,7 @@ export default function ActivityLogModal({ isOpen, onClose, onSubmitted, default
       notes,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-    onSubmitted?.();
+    if (onSubmitted) await onSubmitted();
     setSubmitting(false);
     onClose();
   };

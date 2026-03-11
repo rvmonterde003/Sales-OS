@@ -337,8 +337,13 @@ export default function LeadDetail() {
               companyActivities.map(act => {
                 const actContact = act.contact_id ? contacts.find(c => c.id === act.contact_id) : null;
                 const attachments = (act.attachments || []) as { name: string; url: string; type: string }[];
+                const isQualified = act.notes?.startsWith('[QUALIFIED]');
+                const isStatusChange = act.notes?.startsWith('[MOVED TO SQL]') || act.notes?.startsWith('[UNQUALIFIED]');
                 return (
-                  <div key={act.id} className="flex gap-2.5 rounded-md p-1.5">
+                  <div key={act.id} className={`flex gap-2.5 rounded-md p-1.5 ${
+                    isQualified ? 'bg-green-50 border border-green-200' :
+                    isStatusChange ? 'bg-blue-50 border border-blue-200' : ''
+                  }`}>
                     <StatusBadge status={act.activity_type} variant="tag" />
                     <div className="flex-1 min-w-0">
                       {actContact && (

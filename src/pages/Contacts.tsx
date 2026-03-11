@@ -1,18 +1,14 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
-import AddContactModal from '../components/AddContactModal';
-import { Search, Plus, SlidersHorizontal, Linkedin, Check } from 'lucide-react';
+import { Search, SlidersHorizontal, Linkedin, Check } from 'lucide-react';
 
 type ContactSort = 'name-az' | 'name-za' | 'newest' | 'oldest' | 'company-az';
 
 export default function Contacts() {
   const { contacts, companies } = useData();
-  const { canCreate } = useRole();
   const [search, setSearch] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
   const [roleFilter, setRoleFilter] = useState('');
   const [sortBy, setSortBy] = useState<ContactSort>('name-az');
   const [showSettings, setShowSettings] = useState(false);
@@ -96,12 +92,6 @@ export default function Contacts() {
               {roles.map(r => <option key={r!} value={r!}>{r}</option>)}
             </select>
           )}
-          {canCreate && (
-            <button onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-              <Plus className="w-3.5 h-3.5" /> New Person
-            </button>
-          )}
         </div>
       </div>
 
@@ -129,9 +119,12 @@ export default function Contacts() {
                     </Link>
                   </td>
                   <td className="px-4 py-2.5">
-                    <Link to={`/companies/${contact.company_id}`} className="text-violet-600 hover:underline text-[12px]">
-                      {company?.name}
-                    </Link>
+                    {company ? (
+                      <Link to={company.lead_status === 'MQL' || company.lead_status === 'SQL' ? `/leads/${contact.company_id}` : `/companies/${contact.company_id}`}
+                        className="text-violet-600 hover:underline text-[12px]">
+                        {company.name || `${contact.first_name} ${contact.last_name}`}
+                      </Link>
+                    ) : <span className="text-gray-300 text-[12px]">--</span>}
                   </td>
                   <td className="px-4 py-2.5 text-gray-600 text-[12px]">{contact.title || '--'}</td>
                   <td className="px-4 py-2.5">
@@ -158,7 +151,6 @@ export default function Contacts() {
       </div>
 
       <div className="border-t border-gray-200 px-5 py-2 bg-white text-[12px] text-gray-400 shrink-0">{filtered.length} count</div>
-      <AddContactModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
     </div>
   );
 }

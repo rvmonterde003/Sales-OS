@@ -175,6 +175,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [dbUser]);
 
   const updateCompanyLeadStatus = useCallback(async (companyId: number, status: DbCompany['lead_status'], unqualifyReason?: string) => {
+    if (!dbUser) return;
     const updates: Record<string, unknown> = { lead_status: status };
     if (status === 'Unqualified' && unqualifyReason) {
       updates.unqualify_reason = unqualifyReason;
@@ -184,8 +185,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('companies').update(updates).eq('id', companyId);
     if (!error) {
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, lead_status: status, unqualify_reason: status === 'Unqualified' ? (unqualifyReason || null) : null } : c));
+
+      // Auto-log qualification events
+      if (status === 'Qualified' || status === 'SQL' || status === 'Unqualified') {
+        const label = status === 'Qualified' ? '[QUALIFIED]' : status === 'SQL' ? '[MOVED TO SQL]' : `[UNQUALIFIED] ${unqualifyReason || ''}`;
+        const { data: actData } = await supabase.from('activities').insert({
+          company_id: companyId,
+          activity_type: 'Note',
+          notes: `${label} Lead status changed to ${status}.`,
+          logged_by: dbUser.id,
+          activity_timestamp: new Date().toISOString(),
+        }).select().single();
+        if (actData) {
+          setActivities(prev => [actData, ...prev]);
+          setCompanies(prev => prev.map(c =>
+            c.id === companyId ? { ...c, last_activity_at: actData.activity_timestamp } : c
+          ));
+        }
+      }
     }
-  }, []);
+  }, [dbUser]);
 
   const updateCompany = useCallback(async (id: number, fields: Record<string, unknown>) => {
     const { data, error } = await supabase.from('companies').update(fields).eq('id', id).select().single();

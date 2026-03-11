@@ -67,6 +67,8 @@ export default function CompanyDetail() {
   const isClosedWonActivity = (notes: string | null) => notes?.startsWith('[CLOSED WON]');
   const isClosedLostActivity = (notes: string | null) => notes?.startsWith('[CLOSED LOST]');
   const isReopenActivity = (notes: string | null) => notes?.startsWith('[REOPENED]');
+  const isQualifiedActivity = (notes: string | null) => notes?.startsWith('[QUALIFIED]');
+  const isLeadStatusActivity = (notes: string | null) => notes?.startsWith('[MOVED TO SQL]') || notes?.startsWith('[UNQUALIFIED]');
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -316,9 +318,11 @@ export default function CompanyDetail() {
                   return (
                     <div key={act.id} className={`flex gap-2.5 rounded-md p-1.5 ${
                       isPushback ? 'bg-amber-50 border border-amber-200' :
+                      isQualifiedActivity(act.notes) ? 'bg-green-50 border border-green-200' :
                       isClosedWonActivity(act.notes) ? 'bg-emerald-50 border border-emerald-200' :
                       isClosedLostActivity(act.notes) ? 'bg-red-50 border border-red-200' :
-                      isReopenActivity(act.notes) ? 'bg-emerald-50 border border-emerald-200' : ''
+                      isReopenActivity(act.notes) ? 'bg-emerald-50 border border-emerald-200' :
+                      isLeadStatusActivity(act.notes) ? 'bg-blue-50 border border-blue-200' : ''
                     }`}>
                       <StatusBadge status={act.activity_type} variant="tag" />
                       <div className="flex-1 min-w-0">
