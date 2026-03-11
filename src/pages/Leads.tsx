@@ -21,17 +21,20 @@ export default function Leads() {
     );
   }, [companies]);
 
-  const filtered = useMemo(() => {
-    return leads.filter(c => {
-      const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || c.lead_status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [leads, search, statusFilter]);
-
   const getLeadContact = (companyId: number) => {
     return contacts.find(c => c.company_id === companyId);
   };
+
+  const filtered = useMemo(() => {
+    return leads.filter(c => {
+      const contact = getLeadContact(c.id);
+      const contactName = contact ? `${contact.first_name} ${contact.last_name}`.toLowerCase() : '';
+      const matchesSearch = contactName.includes(search.toLowerCase()) ||
+        c.name.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || c.lead_status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [leads, contacts, search, statusFilter]);
 
   const getLatestActivity = (companyId: number) => {
     const act = activities.find(a => a.company_id === companyId);
@@ -82,12 +85,12 @@ export default function Leads() {
         <table className="attio-table w-full text-[13px]">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50/60">
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Firm Name</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Contact</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Stage</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Source</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Contact</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Email</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Phone</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">LinkedIn</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Latest Activity</th>
             </tr>
           </thead>
@@ -97,15 +100,22 @@ export default function Leads() {
               return (
                 <tr key={company.id} className="border-b border-gray-100 group">
                   <td className="px-4 py-2.5">
-                    <Link to={`/leads/${company.id}`} className="text-gray-900 hover:text-violet-600 font-medium">{company.name}</Link>
+                    <Link to={`/leads/${company.id}`} className="text-gray-900 hover:text-violet-600 font-medium">
+                      {contact ? `${contact.first_name} ${contact.last_name}` : company.name}
+                    </Link>
                   </td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.lead_status} variant="tag" /></td>
                   <td className="px-4 py-2.5">{company.source ? <StatusBadge status={company.source} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>}</td>
-                  <td className="px-4 py-2.5 text-gray-700 text-[12px]">
-                    {contact ? `${contact.first_name} ${contact.last_name}` : '--'}
-                  </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact?.email || '--'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact?.phone || '--'}</td>
+                  <td className="px-4 py-2.5">
+                    {contact?.linkedin_url ? (
+                      <a href={contact.linkedin_url.startsWith('http') ? contact.linkedin_url : `https://${contact.linkedin_url}`}
+                        target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-[12px] hover:underline truncate block max-w-[140px]">
+                        {contact.linkedin_url.replace(/^https?:\/\//, '')}
+                      </a>
+                    ) : <span className="text-gray-300 text-[12px]">--</span>}
+                  </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getLatestActivity(company.id)}</td>
                 </tr>
               );

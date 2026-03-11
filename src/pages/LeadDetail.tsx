@@ -25,8 +25,8 @@ export default function LeadDetail() {
   const [unqualifyReason, setUnqualifyReason] = useState('');
   const [unqualifyOther, setUnqualifyOther] = useState('');
 
-  // Firm info form (SQL stage)
-  const [firmForm, setFirmForm] = useState({ industry: '', firm_size: '', website: '' });
+  // Firm info form (SQL stage — includes firm name)
+  const [firmForm, setFirmForm] = useState({ name: '', industry: '', firm_size: '', website: '' });
 
   // Qualification form
   const [qualForm, setQualForm] = useState({ pain_and_value: '', timeline: '', budget_pricing_fit: '', person_in_position: '' });
@@ -45,6 +45,7 @@ export default function LeadDetail() {
   useEffect(() => {
     if (company) {
       setFirmForm({
+        name: company.name || '',
         industry: company.industry || '',
         firm_size: company.firm_size || '',
         website: company.website || '',
@@ -94,6 +95,7 @@ export default function LeadDetail() {
 
   const handleSaveFirmInfo = async () => {
     await updateCompany(company.id, {
+      name: firmForm.name.trim() || company.name,
       industry: firmForm.industry.trim() || null,
       firm_size: firmForm.firm_size || null,
       website: firmForm.website.trim() || null,
@@ -132,7 +134,7 @@ export default function LeadDetail() {
             <ArrowLeft className="w-3 h-3" /> Leads
           </Link>
           <span className="text-gray-300">/</span>
-          <span className="text-[12px] text-gray-900 font-medium">{company.name}</span>
+          <span className="text-[12px] text-gray-900 font-medium">{contact ? `${contact.first_name} ${contact.last_name}` : company.name}</span>
         </div>
         {canEditThis && (
           <button onClick={() => setShowActivityModal(true)}
@@ -145,19 +147,25 @@ export default function LeadDetail() {
       <div className="flex-1 overflow-hidden flex">
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">
-          {/* Header */}
+          {/* Header — contact-centric */}
           <div className="px-6 py-5 border-b border-gray-100">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold text-[14px]">
-                  {company.name[0]}
+                  {contact ? contact.first_name[0] : company.name[0]}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h1 className="text-[18px] font-bold text-gray-900">{company.name}</h1>
+                    <h1 className="text-[18px] font-bold text-gray-900">
+                      {contact ? `${contact.first_name} ${contact.last_name}` : company.name}
+                    </h1>
                     <StatusBadge status={company.lead_status} variant="tag" />
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-[12px] text-gray-500">
+                    {/* Show firm name badge if it's been set (differs from contact name placeholder) */}
+                    {contact && company.name !== `${contact.first_name} ${contact.last_name}` && (
+                      <StatusBadge status={company.name} variant="tag" />
+                    )}
                     {company.industry && <StatusBadge status={company.industry} variant="tag" />}
                     {company.firm_size && <StatusBadge status={company.firm_size} variant="tag" />}
                     {company.website && (
@@ -177,10 +185,10 @@ export default function LeadDetail() {
             </div>
           </div>
 
-          {/* Contact card */}
+          {/* Contact details */}
           {contact && (
             <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-[13px] font-semibold text-gray-900 mb-2">Primary Contact</h2>
+              <h2 className="text-[13px] font-semibold text-gray-900 mb-2">Contact Details</h2>
               <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
                 <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-[11px]">
                   {contact.first_name[0]}{contact.last_name[0]}
@@ -190,7 +198,8 @@ export default function LeadDetail() {
                   {contact.email && <span className="flex items-center gap-1 text-gray-500"><Mail className="w-3 h-3" />{contact.email}</span>}
                   {contact.phone && <span className="flex items-center gap-1 text-gray-500"><Phone className="w-3 h-3" />{contact.phone}</span>}
                   {contact.linkedin_url && (
-                    <a href={contact.linkedin_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:text-blue-800">
+                    <a href={contact.linkedin_url.startsWith('http') ? contact.linkedin_url : `https://${contact.linkedin_url}`}
+                      target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-600 hover:text-blue-800">
                       <Linkedin className="w-3 h-3" /> LinkedIn
                     </a>
                   )}
@@ -229,12 +238,19 @@ export default function LeadDetail() {
             <div className="px-6 py-4 border-b border-gray-100">
               {/* Firm details */}
               <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Firm Information</h2>
-              <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-[12px] font-medium text-gray-500 mb-1">Firm Name *</label>
+                  <input value={firmForm.name} onChange={e => setFirmForm(p => ({ ...p, name: e.target.value }))}
+                    disabled={!canEditThis} placeholder="e.g. Smith & Associates" className={inputClass} />
+                </div>
                 <div>
                   <label className="block text-[12px] font-medium text-gray-500 mb-1">Industry</label>
                   <input value={firmForm.industry} onChange={e => setFirmForm(p => ({ ...p, industry: e.target.value }))}
                     disabled={!canEditThis} placeholder="e.g. Personal Injury" className={inputClass} />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
                   <label className="block text-[12px] font-medium text-gray-500 mb-1">Firm Size</label>
                   <select value={firmForm.firm_size} onChange={e => setFirmForm(p => ({ ...p, firm_size: e.target.value }))}

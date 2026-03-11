@@ -10,7 +10,6 @@ interface Props {
 
 export default function AddLeadModal({ isOpen, onClose }: Props) {
   const { addCompany, addContact } = useData();
-  const [firmName, setFirmName] = useState('');
   const [source, setSource] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -22,25 +21,24 @@ export default function AddLeadModal({ isOpen, onClose }: Props) {
   if (!isOpen) return null;
 
   const reset = () => {
-    setFirmName(''); setSource(''); setFirstName(''); setLastName('');
+    setSource(''); setFirstName(''); setLastName('');
     setEmail(''); setPhone(''); setLinkedinUrl('');
   };
 
-  const canSubmit = firmName.trim() && firstName.trim() && lastName.trim();
+  const canSubmit = firstName.trim() && lastName.trim();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit || submitting) return;
     setSubmitting(true);
 
-    // Create company as MQL
+    // Create company with contact name as placeholder (firm name added at SQL stage)
     const company = await addCompany({
-      name: firmName.trim(),
+      name: `${firstName.trim()} ${lastName.trim()}`,
       source: source || undefined,
     });
 
     if (company) {
-      // Create contact tied to this company
       await addContact({
         company_id: company.id,
         first_name: firstName.trim(),
@@ -66,27 +64,9 @@ export default function AddLeadModal({ isOpen, onClose }: Props) {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {/* Firm info */}
-          <div>
-            <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-2">Firm</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[12px] font-medium text-gray-500 mb-1">Firm Name *</label>
-                <input value={firmName} onChange={e => setFirmName(e.target.value)} required placeholder="e.g. Smith & Associates" className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-gray-500 mb-1">Lead Source</label>
-                <select value={source} onChange={e => setSource(e.target.value)} className={inputClass}>
-                  <option value="">Select source...</option>
-                  {DEAL_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-
           {/* Contact info */}
           <div>
-            <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-2">Contact Person</div>
+            <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wider mb-2">Contact</div>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-[12px] font-medium text-gray-500 mb-1">First Name *</label>
@@ -111,6 +91,15 @@ export default function AddLeadModal({ isOpen, onClose }: Props) {
                 <input type="url" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} placeholder="https://..." className={inputClass} />
               </div>
             </div>
+          </div>
+
+          {/* Source */}
+          <div>
+            <label className="block text-[12px] font-medium text-gray-500 mb-1">Lead Source</label>
+            <select value={source} onChange={e => setSource(e.target.value)} className={inputClass}>
+              <option value="">Select source...</option>
+              {DEAL_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
