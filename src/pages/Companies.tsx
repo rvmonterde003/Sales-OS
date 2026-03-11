@@ -1,22 +1,19 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { timeAgo, COMPANY_STATUSES, LEAD_STATUSES, DEAL_SOURCES } from '../lib/helpers';
+import { timeAgo, COMPANY_STATUSES, DEAL_SOURCES } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
-import AddCompanyModal from '../components/AddCompanyModal';
-import { Search, Plus, SlidersHorizontal, Check } from 'lucide-react';
+import { Search, SlidersHorizontal, Check } from 'lucide-react';
 
 type CompanySort = 'name-az' | 'name-za' | 'newest' | 'oldest';
 
 export default function Companies() {
   const { companies, contacts, opportunities, getUserName } = useData();
-  const { canCreate, canSeeRepData } = useRole();
+  const { canSeeRepData } = useRole();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [leadStatusFilter, setLeadStatusFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [showAdd, setShowAdd] = useState(false);
   const [sortBy, setSortBy] = useState<CompanySort>('name-az');
   const [showSettings, setShowSettings] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -31,14 +28,24 @@ export default function Companies() {
 
   const sources = useMemo(() => [...new Set(companies.map(c => c.source).filter(Boolean))], [companies]);
 
+  // Only show qualified companies that have opportunities, or customers
+  const lawFirms = useMemo(() => {
+    return companies.filter(c => {
+      if (c.status === 'Customer' || c.status === 'Former') return true;
+      if (c.lead_status === 'Qualified') {
+        return opportunities.some(o => o.company_id === c.id);
+      }
+      return false;
+    });
+  }, [companies, opportunities]);
+
   const filtered = useMemo(() => {
-    const result = companies.filter(c => {
+    const result = lawFirms.filter(c => {
       const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
         (c.industry || '').toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-      const matchesLead = leadStatusFilter === 'all' || c.lead_status === leadStatusFilter;
       const matchesSource = sourceFilter === 'all' || c.source === sourceFilter;
-      return matchesSearch && matchesStatus && matchesLead && matchesSource;
+      return matchesSearch && matchesStatus && matchesSource;
     });
     switch (sortBy) {
       case 'name-az': return result.sort((a, b) => a.name.localeCompare(b.name));
@@ -47,11 +54,10 @@ export default function Companies() {
       case 'oldest': return result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       default: return result;
     }
-  }, [companies, search, statusFilter, leadStatusFilter, sourceFilter, sortBy]);
+  }, [lawFirms, search, statusFilter, sourceFilter, sortBy]);
 
   const activeFilters = [
     statusFilter !== 'all' ? { label: `Status: ${statusFilter}`, clear: () => setStatusFilter('all') } : null,
-    leadStatusFilter !== 'all' ? { label: `Lead: ${leadStatusFilter}`, clear: () => setLeadStatusFilter('all') } : null,
     sourceFilter !== 'all' ? { label: `Source: ${sourceFilter}`, clear: () => setSourceFilter('all') } : null,
   ].filter(Boolean) as { label: string; clear: () => void }[];
 
@@ -95,12 +101,6 @@ export default function Companies() {
             <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
               className="pl-7 pr-3 py-1.5 border border-gray-200 rounded-md text-[12px] w-48 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-400" />
           </div>
-          {canCreate && (
-            <button onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
-              <Plus className="w-3.5 h-3.5" /> New Law Firm
-            </button>
-          )}
         </div>
       </div>
 
@@ -110,11 +110,6 @@ export default function Companies() {
           className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
           <option value="all">All Statuses</option>
           {COMPANY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={leadStatusFilter} onChange={e => setLeadStatusFilter(e.target.value)}
-          className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
-          <option value="all">All Lead Statuses</option>
-          {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
           className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
@@ -132,7 +127,7 @@ export default function Companies() {
                 <button onClick={f.clear} className="ml-1 text-violet-400 hover:text-violet-700">&times;</button>
               </span>
             ))}
-            <button onClick={() => { setStatusFilter('all'); setLeadStatusFilter('all'); setSourceFilter('all'); }}
+            <button onClick={() => { setStatusFilter('all'); setSourceFilter('all'); }}
               className="text-[11px] text-gray-400 hover:text-gray-600 px-1">Clear all</button>
           </>
         )}
@@ -144,7 +139,6 @@ export default function Companies() {
             <tr className="border-b border-gray-200 bg-gray-50/60">
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Law Firm</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Status</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Lead Status</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Industry</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Firm Size</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Source</th>
@@ -165,7 +159,6 @@ export default function Companies() {
                     <Link to={`/companies/${company.id}`} className="text-gray-900 hover:text-violet-600 font-medium">{company.name}</Link>
                   </td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.status} /></td>
-                  <td className="px-4 py-2.5"><StatusBadge status={company.lead_status} variant="tag" /></td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{company.industry || '--'}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.firm_size || '--'} variant="tag" /></td>
                   <td className="px-4 py-2.5">{company.source ? <StatusBadge status={company.source} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>}</td>
@@ -180,14 +173,13 @@ export default function Companies() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={canSeeRepData ? 11 : 10} className="px-4 py-8 text-center text-[13px] text-gray-400">No law firms found</td></tr>
+              <tr><td colSpan={canSeeRepData ? 10 : 9} className="px-4 py-8 text-center text-[13px] text-gray-400">No law firms found</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
       <div className="border-t border-gray-200 px-5 py-2 bg-white text-[12px] text-gray-400 shrink-0">{filtered.length} count</div>
-      <AddCompanyModal isOpen={showAdd} onClose={() => setShowAdd(false)} />
     </div>
   );
 }

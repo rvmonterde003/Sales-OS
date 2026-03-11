@@ -4,6 +4,8 @@ import { DataProvider } from './context/DataContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Pipeline from './pages/Pipeline';
+import Leads from './pages/Leads';
+import LeadDetail from './pages/LeadDetail';
 import Companies from './pages/Companies';
 import CompanyDetail from './pages/CompanyDetail';
 import Contacts from './pages/Contacts';
@@ -39,6 +41,8 @@ function AuthGate() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/revenue" element={<RevenueTimeline />} />
             <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/leads/:id" element={<LeadDetail />} />
             <Route path="/companies" element={<Companies />} />
             <Route path="/companies/:id" element={<CompanyDetail />} />
             <Route path="/contacts" element={<Contacts />} />

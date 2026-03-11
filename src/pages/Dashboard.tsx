@@ -55,7 +55,7 @@ export default function Dashboard() {
   const noData = displayOpps.length === 0 && displayCompanies.length === 0;
 
   return (
-    <div className="p-6 max-w-[1200px]">
+    <div className="p-6">
       <div className="mb-6">
         <h1 className="text-[22px] font-bold text-gray-900">Business Metrics</h1>
         <p className="text-[13px] text-gray-500 mt-0.5">

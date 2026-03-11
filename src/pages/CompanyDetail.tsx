@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, UNQUALIFY_REASONS, PUSHBACK_REASONS } from '../lib/helpers';
+import { formatCurrency, formatDate, formatDateTime, timeAgo, getDealAge, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
@@ -9,7 +9,7 @@ import AddContactModal from '../components/AddContactModal';
 import CreateOpportunityModal from '../components/CreateOpportunityModal';
 import {
   ArrowLeft, Globe, Plus, MessageSquarePlus, Briefcase,
-  FileText, Download, Paperclip, Save, Linkedin,
+  FileText, Download, Paperclip, Linkedin,
 } from 'lucide-react';
 
 export default function CompanyDetail() {
@@ -18,46 +18,25 @@ export default function CompanyDetail() {
   const companyId = Number(id);
   const {
     companies, contacts, opportunities, activities,
-    qualificationChecks, inactivityFlags, stageTransitions,
-    salesStages, getUserName, saveQualification, updateCompanyLeadStatus,
+    inactivityFlags, stageTransitions,
+    salesStages, getUserName,
     pushbackStage, reopenOpportunity,
   } = useData();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [showCreateOpp, setShowCreateOpp] = useState(false);
-  const [showUnqualifyModal, setShowUnqualifyModal] = useState(false);
-  const [unqualifyReason, setUnqualifyReason] = useState('');
-  const [unqualifyOther, setUnqualifyOther] = useState('');
   const [showPushbackModal, setShowPushbackModal] = useState<number | null>(null);
   const [pushbackReason, setPushbackReason] = useState('');
-
-  // Local qualification form state (saved on button click, not realtime)
-  const [qualForm, setQualForm] = useState({ pain_and_value: '', timeline: '', budget_pricing_fit: '', person_in_position: '' });
-  const [qualDirty, setQualDirty] = useState(false);
 
   const { canEdit } = useRole();
   const company = companies.find(c => c.id === companyId);
   const canEditThis = company ? canEdit(company.owner_id) : false;
-  const qualification = qualificationChecks.find(q => q.company_id === companyId);
-
-  // Sync local form when qualification data loads/changes
-  useEffect(() => {
-    if (qualification) {
-      setQualForm({
-        pain_and_value: qualification.pain_and_value || '',
-        timeline: qualification.timeline || '',
-        budget_pricing_fit: qualification.budget_pricing_fit || '',
-        person_in_position: qualification.person_in_position || '',
-      });
-      setQualDirty(false);
-    }
-  }, [qualification]);
 
   if (!company) {
     return (
       <div className="p-6">
         <p className="text-gray-500 text-[13px]">Company not found.</p>
-        <Link to="/companies" className="text-violet-600 text-[13px] mt-2 inline-block">Back to Companies</Link>
+        <Link to="/companies" className="text-violet-600 text-[13px] mt-2 inline-block">Back to Law Firms</Link>
       </div>
     );
   }
@@ -71,37 +50,9 @@ export default function CompanyDetail() {
   const flags = inactivityFlags.filter(f => f.company_id === company.id && !f.resolved_at);
   const nonTerminalStages = salesStages.filter(s => s.name !== 'Won' && s.name !== 'Loss');
 
-  const qualFields: Array<{ key: keyof typeof qualForm; label: string; placeholder: string }> = [
-    { key: 'pain_and_value', label: 'Prospect Articulated Pain & Value', placeholder: 'Describe how the prospect sees value...' },
-    { key: 'timeline', label: 'Timeline', placeholder: 'Expected timeline or trigger events...' },
-    { key: 'budget_pricing_fit', label: 'Budget / Pricing Fit', placeholder: 'Budget availability and pricing alignment...' },
-    { key: 'person_in_position', label: 'Person in Position', placeholder: 'Decision maker and their authority...' },
-  ];
-  const bantScore = qualFields.filter(f => qualForm[f.key].trim() !== '').length;
-  const isQualified = company.lead_status === 'Qualified';
-
   const getDaysInStage = (oppId: number, createdAt: string) => {
     const t = stageTransitions.find(t => t.opportunity_id === oppId);
     return Math.floor((Date.now() - new Date(t?.created_at || createdAt).getTime()) / 86400000);
-  };
-
-  const handleSaveQualification = async () => {
-    await saveQualification(company.id, qualForm);
-    setQualDirty(false);
-    // If all 4 filled, auto-qualify the company
-    if (bantScore === 4) {
-      await updateCompanyLeadStatus(company.id, 'Qualified');
-    }
-  };
-
-  const handleUnqualify = () => {
-    const reason = unqualifyReason === 'Other' ? (unqualifyOther.trim() || 'Other') : unqualifyReason;
-    if (reason) {
-      updateCompanyLeadStatus(company.id, 'Unqualified', reason);
-      setShowUnqualifyModal(false);
-      setUnqualifyReason('');
-      setUnqualifyOther('');
-    }
   };
 
   const handlePushback = async () => {
@@ -123,7 +74,7 @@ export default function CompanyDetail() {
       <div className="px-5 py-2 border-b border-gray-200 shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/companies" className="flex items-center gap-1 text-[12px] text-gray-400 hover:text-gray-600">
-            <ArrowLeft className="w-3 h-3" /> Companies
+            <ArrowLeft className="w-3 h-3" /> Law Firms
           </Link>
           <span className="text-gray-300">/</span>
           <span className="text-[12px] text-gray-900 font-medium">{company.name}</span>
@@ -134,12 +85,10 @@ export default function CompanyDetail() {
               className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
               <Plus className="w-3 h-3" /> Add Contact
             </button>
-            {isQualified && (
-              <button onClick={() => setShowCreateOpp(true)}
-                className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
-                <Briefcase className="w-3 h-3" /> Create Opportunity
-              </button>
-            )}
+            <button onClick={() => setShowCreateOpp(true)}
+              className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
+              <Briefcase className="w-3 h-3" /> Create Opportunity
+            </button>
             <button onClick={() => setShowActivityModal(true)}
               className="flex items-center gap-1.5 bg-violet-600 text-white text-[12px] font-medium px-3 py-1.5 rounded-md hover:bg-violet-700 transition-colors">
               <MessageSquarePlus className="w-3.5 h-3.5" /> Log Activity
@@ -194,88 +143,8 @@ export default function CompanyDetail() {
           </div>
         )}
 
-        {/* Stage 0: MQL → SQL button */}
-        {company.lead_status === 'MQL' && (
-          <div className="px-6 py-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 flex-1">
-                <div className="flex-1 h-2 rounded-full bg-violet-500" />
-                <span className="text-[11px] text-violet-600 font-semibold">MQL</span>
-                <span className="text-gray-300 text-[10px]">&rarr;</span>
-                <div className="flex-1 h-2 rounded-full bg-gray-200" />
-                <span className="text-[11px] text-gray-400">SQL</span>
-                <span className="text-gray-300 text-[10px]">&rarr;</span>
-                <div className="flex-1 h-2 rounded-full bg-gray-200" />
-                <span className="text-[11px] text-gray-400">Qualified</span>
-              </div>
-              {canEditThis && (
-                <button onClick={() => updateCompanyLeadStatus(company.id, 'SQL')}
-                  className="text-[12px] bg-violet-600 text-white px-3 py-1.5 rounded-md hover:bg-violet-700 font-medium">
-                  Move to SQL
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Stage 0: SQL → Qualification form */}
-        {company.lead_status === 'SQL' && (
-          <div className="px-6 py-4 border-b border-gray-100">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex items-center gap-2 flex-1">
-                <div className="flex-1 h-2 rounded-full bg-emerald-400" />
-                <span className="text-[11px] text-gray-400">MQL</span>
-                <span className="text-gray-300 text-[10px]">&rarr;</span>
-                <div className="flex-1 h-2 rounded-full bg-violet-500" />
-                <span className="text-[11px] text-violet-600 font-semibold">SQL</span>
-                <span className="text-gray-300 text-[10px]">&rarr;</span>
-                <div className="flex-1 h-2 rounded-full bg-gray-200" />
-                <span className="text-[11px] text-gray-400">Qualified</span>
-              </div>
-            </div>
-
-            <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Qualification</h2>
-            <div className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(bantScore / 4) * 100}%` }} />
-            </div>
-            <div className="space-y-3">
-              {qualFields.map(item => (
-                <div key={item.key}>
-                  <label className="block text-[12px] font-medium text-gray-700 mb-1">{item.label}</label>
-                  <textarea
-                    value={qualForm[item.key]}
-                    onChange={e => { setQualForm(prev => ({ ...prev, [item.key]: e.target.value })); setQualDirty(true); }}
-                    placeholder={item.placeholder}
-                    rows={2}
-                    disabled={!canEditThis}
-                    className="w-full border border-gray-200 rounded-md px-3 py-2 text-[13px] resize-none focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-              ))}
-            </div>
-            {canEditThis && (
-              <div className="flex items-center gap-2 mt-4">
-                <button onClick={handleSaveQualification} disabled={bantScore < 4}
-                  className="flex items-center gap-1.5 text-[12px] bg-emerald-600 text-white px-3 py-1.5 rounded-md hover:bg-emerald-700 font-medium disabled:opacity-40 transition-colors">
-                  <Save className="w-3 h-3" /> Save Qualification {bantScore < 4 ? `(${bantScore}/4)` : ''}
-                </button>
-                {qualDirty && bantScore < 4 && (
-                  <button onClick={async () => { await saveQualification(company.id, qualForm); setQualDirty(false); }}
-                    className="flex items-center gap-1.5 text-[12px] text-gray-600 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50">
-                    <Save className="w-3 h-3" /> Save Draft
-                  </button>
-                )}
-                <button onClick={() => setShowUnqualifyModal(true)}
-                  className="text-[12px] bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 font-medium">
-                  Unqualify
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Pipeline Status — Only show when Qualified */}
-        {isQualified && (
+        {/* Pipeline Status */}
+        {(
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-[13px] font-semibold text-gray-900 mb-3">Pipeline</h2>
             {openOpps.length === 0 ? (
@@ -496,43 +365,6 @@ export default function CompanyDetail() {
       <ActivityLogModal isOpen={showActivityModal} onClose={() => setShowActivityModal(false)} defaultCompanyId={company.id} />
       <AddContactModal isOpen={showAddContact} onClose={() => setShowAddContact(false)} defaultCompanyId={company.id} />
       <CreateOpportunityModal isOpen={showCreateOpp} onClose={() => setShowCreateOpp(false)} companyId={company.id} />
-
-      {/* Unqualify Modal */}
-      {showUnqualifyModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]" onClick={() => setShowUnqualifyModal(false)}>
-          <div className="bg-white rounded-lg shadow-xl w-[400px]" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-[15px] font-semibold text-gray-900">Unqualify Company</h2>
-            </div>
-            <div className="p-4 space-y-3">
-              <div>
-                <label className="block text-[12px] font-medium text-gray-500 mb-1">Reason *</label>
-                <select value={unqualifyReason} onChange={e => setUnqualifyReason(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent">
-                  <option value="">Select reason...</option>
-                  {UNQUALIFY_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              {unqualifyReason === 'Other' && (
-                <div>
-                  <label className="block text-[12px] font-medium text-gray-500 mb-1">Specify</label>
-                  <input value={unqualifyOther} onChange={e => setUnqualifyOther(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    placeholder="Enter reason..." />
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setShowUnqualifyModal(false)}
-                  className="px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
-                <button onClick={handleUnqualify} disabled={!unqualifyReason || (unqualifyReason === 'Other' && !unqualifyOther.trim())}
-                  className="px-3 py-1.5 text-[13px] bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-40 font-medium">
-                  Confirm Unqualify
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Pushback Modal */}
       {showPushbackModal && (

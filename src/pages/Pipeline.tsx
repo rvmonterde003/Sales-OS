@@ -114,45 +114,8 @@ export default function Pipeline() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto overflow-y-auto p-4">
+      <div className="flex-1 overflow-auto p-4">
         <div className="flex gap-3 min-h-full">
-          {/* Leads column — MQL & SQL companies, static / non-draggable */}
-          {(() => {
-            const leads = companies.filter(c => c.lead_status === 'MQL' || c.lead_status === 'SQL').sort((a, b) => {
-              switch (sortBy) {
-                case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-                case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-                case 'company-az': return a.name.localeCompare(b.name);
-                case 'company-za': return b.name.localeCompare(a.name);
-                default: return a.name.localeCompare(b.name);
-              }
-            });
-            return (
-              <div className="flex-shrink-0 w-[220px] flex flex-col rounded-lg bg-gray-100/80">
-                <div className="px-3 py-2.5 mb-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-[12px] font-semibold text-gray-500">Leads</h3>
-                    <span className="text-[11px] text-gray-400 font-medium">{leads.length}</span>
-                  </div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">MQL &amp; SQL — qualify to move to pipeline</div>
-                </div>
-                <div className="flex-1 space-y-1.5 px-1.5 pb-2 min-h-[100px] overflow-y-auto max-h-[calc(100vh-180px)]">
-                  {leads.map(c => (
-                    <Link key={c.id} to={`/companies/${c.id}`}
-                      className="block bg-gray-200/70 hover:bg-gray-300/70 rounded-md px-2.5 py-2 transition-colors cursor-pointer">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-medium text-gray-700 truncate">{c.name}</span>
-                        <StatusBadge status={c.lead_status} variant="tag" />
-                      </div>
-                      {c.industry && <div className="text-[10px] text-gray-500 mt-0.5 truncate">{c.industry}</div>}
-                    </Link>
-                  ))}
-                  {leads.length === 0 && <div className="text-center py-6 text-[11px] text-gray-400">No leads</div>}
-                </div>
-              </div>
-            );
-          })()}
-
           {nonTerminalStages.map(stage => {
             const stageOpps = qualifiedOpps.filter(o => o.stage_id === stage.id && !o.closed_at).sort((a, b) => {
               switch (sortBy) {

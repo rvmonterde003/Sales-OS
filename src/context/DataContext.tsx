@@ -28,6 +28,7 @@ interface DataContextType {
 
   addCompany: (c: { name: string; industry?: string; firm_size?: string; website?: string; source?: string; }) => Promise<DbCompany | null>;
   updateCompanyLeadStatus: (companyId: number, status: DbCompany['lead_status'], unqualifyReason?: string) => Promise<void>;
+  updateCompany: (id: number, fields: Record<string, unknown>) => Promise<void>;
   addContact: (c: { company_id: number; first_name: string; last_name: string; email?: string; phone?: string; title?: string; role?: string; linkedin_url?: string; }) => Promise<DbContact | null>;
   updateContact: (id: number, fields: Partial<DbContact>) => Promise<void>;
   deleteContact: (id: number) => Promise<void>;
@@ -183,6 +184,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('companies').update(updates).eq('id', companyId);
     if (!error) {
       setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, lead_status: status, unqualify_reason: status === 'Unqualified' ? (unqualifyReason || null) : null } : c));
+    }
+  }, []);
+
+  const updateCompany = useCallback(async (id: number, fields: Record<string, unknown>) => {
+    const { data, error } = await supabase.from('companies').update(fields).eq('id', id).select().single();
+    if (!error && data) {
+      setCompanies(prev => prev.map(c => c.id === id ? data : c));
     }
   }, []);
 
@@ -540,7 +548,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       allCompanies: companies, allOpportunities: opportunities, allActivities: activities,
       loading,
       getStageById, getUserName,
-      addCompany, updateCompanyLeadStatus, addContact, updateContact, deleteContact, addActivity,
+      addCompany, updateCompany, updateCompanyLeadStatus, addContact, updateContact, deleteContact, addActivity,
       updateDealValue, addOpportunity, updateOpportunity, moveToStage, pushbackStage, closeOpportunity, reopenOpportunity,
       saveQualification, resolveFlag, hasActivitySinceLastTransition,
       refreshData: fetchAll,
