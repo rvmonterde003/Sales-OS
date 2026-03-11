@@ -162,8 +162,8 @@ export default function LeadDetail() {
                     <StatusBadge status={company.lead_status} variant="tag" />
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-[12px] text-gray-500">
-                    {/* Show firm name badge if it's been set (differs from contact name placeholder) */}
-                    {contact && company.name !== `${contact.first_name} ${contact.last_name}` && (
+                    {/* Show firm name badge if it's been set */}
+                    {company.name && (
                       <StatusBadge status={company.name} variant="tag" />
                     )}
                     {company.industry && <StatusBadge status={company.industry} variant="tag" />}

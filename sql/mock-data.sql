@@ -43,10 +43,10 @@ SELECT setval('users_id_seq', (SELECT MAX(id) FROM users));
 --    Former    = churned client
 -- ────────────────────────────────────────────────────────────
 INSERT INTO companies (id, name, industry, firm_size, website, source, status, lead_status, owner_id, last_activity_at) VALUES
-  -- MQL leads (contact name as placeholder — no firm info yet)
-  (1,  'Linda Baxter',                NULL,                NULL,      NULL,                          'Outbound',   'Prospect', 'MQL', 3, now() - interval '2 days'),
-  (2,  'Howard Finch',                NULL,                NULL,      NULL,                          'Outbound',   'Prospect', 'MQL', 4, now() - interval '5 days'),
-  (3,  'Gregory Owens',               NULL,                NULL,      NULL,                          'Inbound',    'Prospect', 'MQL', 4, now() - interval '3 days'),
+  -- MQL leads (empty firm name — just contacts, firm name added at SQL stage)
+  (1,  '',                            NULL,                NULL,      NULL,                          'Outbound',   'Prospect', 'MQL', 3, now() - interval '2 days'),
+  (2,  '',                            NULL,                NULL,      NULL,                          'Outbound',   'Prospect', 'MQL', 4, now() - interval '5 days'),
+  (3,  '',                            NULL,                NULL,      NULL,                          'Inbound',    'Prospect', 'MQL', 4, now() - interval '3 days'),
 
   -- SQL leads (firm name + info being populated, BANT in progress)
   (4,  'Hartwell & Associates',       'Personal Injury',   '11-50',   'hartwelllaw.com',             'Inbound',    'Prospect', 'SQL', 1, now() - interval '1 day'),

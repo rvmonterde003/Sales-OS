@@ -32,9 +32,9 @@ export default function AddLeadModal({ isOpen, onClose }: Props) {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
 
-    // Create company with contact name as placeholder (firm name added at SQL stage)
+    // Create company with empty name placeholder (firm name added at SQL stage)
     const company = await addCompany({
-      name: `${firstName.trim()} ${lastName.trim()}`,
+      name: '',
       source: source || undefined,
     });
 
