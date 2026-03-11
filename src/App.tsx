@@ -17,6 +17,7 @@ import RevenueTimeline from './pages/RevenueTimeline';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function AuthGate() {
   const { session, loading } = useAuth();
@@ -61,8 +62,10 @@ function AuthGate() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AuthGate />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

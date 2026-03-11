@@ -134,7 +134,7 @@ INSERT INTO opportunities (id, company_id, primary_contact_id, stage_id, opportu
   -- Qualified + active pipeline
   (1,  8,  10, 4, 'New',     'SEO retainer + content marketing — blog posts, practice area pages, local citations, review management',                    'Referral', 48000.00,  'Best Case',  '2026-04-15', NULL, NULL, NULL, NULL, NULL, NULL, 1),
   (2,  9,  12, 2, 'New',     'Enterprise SEO strategy — multi-location optimization, content hub, authority building for employment law',                  'Event',    84000.00,  'Pipeline',   '2026-06-01', NULL, NULL, NULL, NULL, NULL, NULL, 3),
-  (3,  10, 13, 3, 'New',     'Full SEO + local SEO package — keyword strategy, on-page optimization, GBP management for 3 offices',                       'Inbound',  72000.00,  'Best Case',  '2026-05-15', NULL, NULL, NULL, NULL, NULL, NULL, 1),
+  (3,  10, 13, 3, 'New',     'Full SEO + local SEO package — keyword strategy, on-page optimization, GBP management for 3 offices',                       'Inbound',  72000.00,  'Best Case',  '2026-05-15', NULL, NULL, NULL, NULL, NULL, NULL, 4),
 
   -- Customer — won deals
   (4,  11, 14, 8, 'New',     'Full SEO retainer — bilingual content, local SEO for 3 office locations, immigration-specific keyword strategy',             'Referral', 36000.00,  'Commit',     '2026-02-15', 36000.00, '2026-03-01', '2027-02-28', NULL, NULL, '2026-02-14 10:00:00+00', 2),

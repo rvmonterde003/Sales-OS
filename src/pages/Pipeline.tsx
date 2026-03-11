@@ -60,9 +60,9 @@ export default function Pipeline() {
   };
   const handleDragEnd = () => { setDragOppId(null); setDropTarget(null); };
 
-  const handleActivitySubmitted = async () => {
+  const handleActivitySubmitted = () => {
     if (pendingMove) {
-      await moveToStage(pendingMove.oppId, pendingMove.targetStageId, 'Moved via pipeline board.');
+      moveToStage(pendingMove.oppId, pendingMove.targetStageId, 'Moved via pipeline board.');
     }
   };
 
