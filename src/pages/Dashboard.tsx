@@ -224,8 +224,8 @@ function TrackerTable({ year, onYearChange, companies, opportunities, activities
   }), { mqls: 0, sqlsMeetings: 0, oppsCreatedNum: 0, oppsCreatedVal: 0, oppsWonNum: 0, oppsWonVal: 0, oppsLostNum: 0, oppsLostVal: 0 });
 
   const metricLabels = [
-    'MQLs',
-    'SQLs / Meetings Booked',
+    'MWLs',
+    'SWLs / Meetings Booked',
     'Opps Created #',
     'Opps Created $',
     'Opps Created AOV',

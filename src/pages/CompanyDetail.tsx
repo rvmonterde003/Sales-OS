@@ -68,7 +68,7 @@ export default function CompanyDetail() {
   const isClosedLostActivity = (notes: string | null) => notes?.startsWith('[CLOSED LOST]');
   const isReopenActivity = (notes: string | null) => notes?.startsWith('[REOPENED]');
   const isQualifiedActivity = (notes: string | null) => notes?.startsWith('[QUALIFIED]');
-  const isLeadStatusActivity = (notes: string | null) => notes?.startsWith('[MOVED TO SQL]') || notes?.startsWith('[UNQUALIFIED]');
+  const isLeadStatusActivity = (notes: string | null) => notes?.startsWith('[MOVED TO SWL]') || notes?.startsWith('[MOVED TO SQL]') || notes?.startsWith('[UNQUALIFIED]');
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">

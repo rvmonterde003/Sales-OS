@@ -188,7 +188,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // Auto-log qualification events
       if (status === 'Qualified' || status === 'SQL' || status === 'Unqualified') {
-        const label = status === 'Qualified' ? '[QUALIFIED]' : status === 'SQL' ? '[MOVED TO SQL]' : `[UNQUALIFIED] ${unqualifyReason || ''}`;
+        const label = status === 'Qualified' ? '[QUALIFIED]' : status === 'SQL' ? '[MOVED TO SWL]' : `[UNQUALIFIED] ${unqualifyReason || ''}`;
         const { data: actData } = await supabase.from('activities').insert({
           company_id: companyId,
           activity_type: 'Note',
