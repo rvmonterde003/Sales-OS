@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import DashboardTab from './pages/DashboardTab';
 import Dashboard from './pages/Dashboard';
 import Pipeline from './pages/Pipeline';
+import DealsPage from './pages/DealsPage';
 import Leads from './pages/Leads';
 import LeadDetail from './pages/LeadDetail';
 import Companies from './pages/Companies';
@@ -42,6 +43,7 @@ function AuthGate() {
             <Route path="/" element={<DashboardTab />} />
             <Route path="/metrics" element={<Dashboard />} />
             <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/deals" element={<DealsPage />} />
             <Route path="/leads" element={<Leads />} />
             <Route path="/leads/:id" element={<LeadDetail />} />
             <Route path="/companies" element={<Companies />} />

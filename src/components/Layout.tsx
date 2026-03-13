@@ -6,7 +6,8 @@ import { useData } from '../context/DataContext';
 const routeTitles: Record<string, { title: string }> = {
   '/': { title: 'Dashboard' },
   '/metrics': { title: 'Business Metrics' },
-  '/pipeline': { title: 'Deals' },
+  '/deals': { title: 'Deals' },
+  '/pipeline': { title: 'Pipeline View' },
   '/leads': { title: 'Leads' },
   '/companies': { title: 'Law Firms' },
   '/contacts': { title: 'People' },
