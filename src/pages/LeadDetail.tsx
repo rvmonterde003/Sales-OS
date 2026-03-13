@@ -212,10 +212,10 @@ export default function LeadDetail() {
           <div className="px-6 py-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <div className={`flex-1 h-2 rounded-full ${company.lead_status === 'MQL' ? 'bg-violet-500' : 'bg-emerald-400'}`} />
-              <span className={`text-[11px] ${company.lead_status === 'MQL' ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>MWL</span>
+              <span className={`text-[11px] ${company.lead_status === 'MQL' ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>MQL</span>
               <span className="text-gray-300 text-[10px]">&rarr;</span>
               <div className={`flex-1 h-2 rounded-full ${company.lead_status === 'SQL' ? 'bg-violet-500' : company.lead_status === 'Qualified' ? 'bg-emerald-400' : 'bg-gray-200'}`} />
-              <span className={`text-[11px] ${company.lead_status === 'SQL' ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>SWL</span>
+              <span className={`text-[11px] ${company.lead_status === 'SQL' ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>SQL</span>
               <span className="text-gray-300 text-[10px]">&rarr;</span>
               <div className={`flex-1 h-2 rounded-full ${company.lead_status === 'Qualified' ? 'bg-violet-500' : 'bg-gray-200'}`} />
               <span className={`text-[11px] ${company.lead_status === 'Qualified' ? 'text-violet-600 font-semibold' : 'text-gray-400'}`}>Qualified</span>
@@ -225,10 +225,10 @@ export default function LeadDetail() {
           {/* MQL: Move to SQL */}
           {company.lead_status === 'MQL' && canEditThis && (
             <div className="px-6 py-4 border-b border-gray-100">
-              <p className="text-[13px] text-gray-600 mb-3">This lead is at MWL stage. Move to SWL to begin qualification.</p>
+              <p className="text-[13px] text-gray-600 mb-3">This lead is at MQL stage. Move to SQL to begin qualification.</p>
               <button onClick={handleMoveToSql}
                 className="text-[12px] bg-violet-600 text-white px-4 py-2 rounded-md hover:bg-violet-700 font-medium">
-                Move to SWL
+                Move to SQL
               </button>
             </div>
           )}
@@ -338,7 +338,7 @@ export default function LeadDetail() {
                 const actContact = act.contact_id ? contacts.find(c => c.id === act.contact_id) : null;
                 const attachments = (act.attachments || []) as { name: string; url: string; type: string }[];
                 const isQualified = act.notes?.startsWith('[QUALIFIED]');
-                const isStatusChange = act.notes?.startsWith('[MOVED TO SWL]') || act.notes?.startsWith('[MOVED TO SQL]') || act.notes?.startsWith('[UNQUALIFIED]');
+                const isStatusChange = act.notes?.startsWith('[MOVED TO SQL]') || act.notes?.startsWith('[UNQUALIFIED]');
                 return (
                   <div key={act.id} className={`flex gap-2.5 rounded-md p-1.5 ${
                     isQualified ? 'bg-green-50 border border-green-200' :

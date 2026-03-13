@@ -41,7 +41,7 @@ function GuideTab() {
       icon: UserPlus,
       color: 'bg-cyan-100 text-cyan-700',
       title: '1. Create a Lead',
-      description: 'Go to the Leads tab and click "New Lead". Enter the contact\'s first name, last name, and optionally their email, phone, LinkedIn, and lead source. The lead starts at MWL stage — no firm name is needed yet.',
+      description: 'Go to the Leads tab and click "New Lead". Enter the contact\'s first name, last name, and optionally their email, phone, LinkedIn, and lead source. The lead starts at MQL stage — no firm name is needed yet.',
     },
     {
       icon: MessageSquarePlus,
@@ -52,14 +52,14 @@ function GuideTab() {
     {
       icon: ArrowRight,
       color: 'bg-indigo-100 text-indigo-700',
-      title: '3. Move to SWL',
-      description: 'When a lead shows interest, open the lead detail and click "Move to SWL". This unlocks the firm information form (Firm Name, Industry, Firm Size, Website) and the BANT qualification fields.',
+      title: '3. Move to SQL',
+      description: 'When a lead shows interest, open the lead detail and click "Move to SQL". This unlocks the firm information form (Firm Name, Industry, Firm Size, Website) and the BANT qualification fields.',
     },
     {
       icon: Building2,
       color: 'bg-purple-100 text-purple-700',
       title: '4. Add Firm Information',
-      description: 'At SWL stage, fill in the Firm Name and details (Industry, Firm Size, Website). Click "Save Firm Info" to update. This is where the contact gets associated with an actual law firm.',
+      description: 'At SQL stage, fill in the Firm Name and details (Industry, Firm Size, Website). Click "Save Firm Info" to update. This is where the contact gets associated with an actual law firm.',
     },
     {
       icon: ClipboardCheck,
@@ -129,7 +129,7 @@ function GuideTab() {
       <div className="mt-6 p-4 bg-violet-50 border border-violet-200 rounded-lg">
         <h3 className="text-[13px] font-semibold text-violet-900 mb-2">Tips</h3>
         <ul className="space-y-1.5 text-[12px] text-violet-800">
-          <li>- New leads start as contacts in the <strong>Leads</strong> tab. Firm name and details are added during SWL qualification.</li>
+          <li>- New leads start as contacts in the <strong>Leads</strong> tab. Firm name and details are added during SQL qualification.</li>
           <li>- Once a lead is qualified and has an opportunity, it automatically moves to the <strong>Law Firms</strong> tab.</li>
           <li>- Use the <strong>Deals</strong> tab for a kanban view of your pipeline. Drag cards one stage at a time (activity log required).</li>
           <li>- <strong>Risk Flags</strong> alert you to stale deals and inactive companies. Resolve them by logging activity.</li>

@@ -55,17 +55,14 @@ const colorMap: Record<string, { bg: string; text: string; dot: string; border: 
 
 const fallback = { bg: 'bg-gray-100', text: 'text-gray-600', dot: 'bg-gray-400', border: 'border-gray-200' };
 
-const displayLabel: Record<string, string> = { MQL: 'MWL', SQL: 'SWL' };
-
 export default function StatusBadge({ status, variant = 'pill' }: StatusBadgeProps) {
   const colors = colorMap[status] || fallback;
-  const label = displayLabel[status] || status;
 
   if (variant === 'dot') {
     return (
       <span className="inline-flex items-center gap-1.5">
         <span className={`w-[6px] h-[6px] rounded-full ${colors.dot}`} />
-        <span className="text-[12px] text-gray-600">{label}</span>
+        <span className="text-[12px] text-gray-600">{status}</span>
       </span>
     );
   }
@@ -73,7 +70,7 @@ export default function StatusBadge({ status, variant = 'pill' }: StatusBadgePro
   if (variant === 'tag') {
     return (
       <span className={`inline-flex items-center px-1.5 py-[1px] rounded text-[11px] font-medium ${colors.bg} ${colors.text}`}>
-        {label}
+        {status}
       </span>
     );
   }
@@ -81,7 +78,7 @@ export default function StatusBadge({ status, variant = 'pill' }: StatusBadgePro
   // Default pill - Attio style
   return (
     <span className={`inline-flex items-center px-2 py-[2px] rounded-full text-[11px] font-medium ${colors.bg} ${colors.text}`}>
-      {label}
+      {status}
     </span>
   );
 }

@@ -72,8 +72,8 @@ export default function Leads() {
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
           <option value="all">All Stages</option>
-          <option value="MQL">MWL</option>
-          <option value="SQL">SWL</option>
+          <option value="MQL">MQL</option>
+          <option value="SQL">SQL</option>
           <option value="Qualified">Qualified</option>
         </select>
         {statusFilter !== 'all' && (
