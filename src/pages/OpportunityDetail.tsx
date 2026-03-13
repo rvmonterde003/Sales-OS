@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { formatCurrency, formatDate, formatDateTime, getDealAge, PUSHBACK_REASONS } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
@@ -12,6 +12,8 @@ import {
 
 export default function OpportunityDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const oppId = Number(id);
   const {
     opportunities, companies, contacts, activities,
@@ -103,9 +105,14 @@ export default function OpportunityDetail() {
     <div className="flex flex-col h-[calc(100vh-46px)]">
       <div className="px-5 py-2 border-b border-gray-200 shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link to="/pipeline" className="flex items-center gap-1 text-[12px] text-gray-400 hover:text-gray-600">
-            <ArrowLeft className="w-3 h-3" /> Deals
-          </Link>
+          <button onClick={() => {
+            const from = (location.state as { from?: string })?.from;
+            if (from) navigate(from);
+            else if (window.history.length > 1) navigate(-1);
+            else navigate('/pipeline');
+          }} className="flex items-center gap-1 text-[12px] text-gray-400 hover:text-gray-600">
+            <ArrowLeft className="w-3 h-3" /> Back
+          </button>
           <span className="text-gray-300">/</span>
           <span className="text-[12px] text-gray-900 font-medium">{company?.name}</span>
         </div>

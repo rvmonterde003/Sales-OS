@@ -47,6 +47,7 @@ export default function Contacts() {
   const getContactStatus = (companyId: number): string => {
     const company = companies.find(c => c.id === companyId);
     if (!company) return '--';
+    if (company.lead_status === 'Unqualified') return 'Unqualified';
     const companyOpps = opportunities.filter(o => o.company_id === companyId);
     if (companyOpps.length === 0) return company.lead_status;
     // Prefer active (non-closed) opportunities, pick the most advanced stage
@@ -57,14 +58,15 @@ export default function Contacts() {
         const bOrder = salesStages.find(s => s.id === b.stage_id)?.stage_order ?? 0;
         return bOrder > aOrder ? b : a;
       });
-      return salesStages.find(s => s.id === best.stage_id)?.name ?? company.lead_status;
+      const stageName = salesStages.find(s => s.id === best.stage_id)?.name ?? company.lead_status;
+      return `Qualified - ${stageName}`;
     }
     // All closed — show Won if any won, otherwise Lost
     const hasWon = companyOpps.some(o => {
       const stage = salesStages.find(s => s.id === o.stage_id);
       return stage?.name === 'Won';
     });
-    return hasWon ? 'Won' : 'Loss';
+    return hasWon ? 'Qualified - Won' : 'Qualified - Loss';
   };
 
   return (
@@ -124,7 +126,8 @@ export default function Contacts() {
             <tr className="border-b border-gray-200 bg-gray-50/60">
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Name</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Company</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Source</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Title</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Role</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Status</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Email</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Phone</th>
@@ -149,7 +152,8 @@ export default function Contacts() {
                       </Link>
                     ) : <span className="text-gray-300 text-[12px]">--</span>}
                   </td>
-                  <td className="px-4 py-2.5 text-gray-600 text-[12px]">{company?.source || '--'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.title || '--'}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.role || '--'}</td>
                   <td className="px-4 py-2.5">
                     {(() => {
                       const status = getContactStatus(contact.company_id);
@@ -170,7 +174,7 @@ export default function Contacts() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-[13px] text-gray-400">No contacts found</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-[13px] text-gray-400">No contacts found</td></tr>
             )}
           </tbody>
         </table>

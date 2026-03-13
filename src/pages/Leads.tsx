@@ -14,10 +14,10 @@ export default function Leads() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAdd, setShowAdd] = useState(false);
 
-  // Leads = MQL, SQL, or Qualified without any opportunities
+  // Leads = MQL, SQL, Qualified (without opportunities), or Unqualified
   const leads = useMemo(() => {
     return companies.filter(c =>
-      c.lead_status === 'MQL' || c.lead_status === 'SQL' || c.lead_status === 'Qualified'
+      c.lead_status === 'MQL' || c.lead_status === 'SQL' || c.lead_status === 'Qualified' || c.lead_status === 'Unqualified'
     );
   }, [companies]);
 
@@ -75,6 +75,7 @@ export default function Leads() {
           <option value="MQL">MQL</option>
           <option value="SQL">SQL</option>
           <option value="Qualified">Qualified</option>
+          <option value="Unqualified">Unqualified</option>
         </select>
         {statusFilter !== 'all' && (
           <button onClick={() => setStatusFilter('all')} className="text-[11px] text-gray-400 hover:text-gray-600 px-1">Clear</button>
