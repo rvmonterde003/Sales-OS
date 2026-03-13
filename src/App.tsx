@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import Layout from './components/Layout';
+import DashboardTab from './pages/DashboardTab';
 import Dashboard from './pages/Dashboard';
 import Pipeline from './pages/Pipeline';
 import Leads from './pages/Leads';
@@ -13,7 +14,6 @@ import ContactDetail from './pages/ContactDetail';
 import OpportunityDetail from './pages/OpportunityDetail';
 import ActivitiesPage from './pages/ActivitiesPage';
 import RiskFlags from './pages/RiskFlags';
-import RevenueTimeline from './pages/RevenueTimeline';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
@@ -39,8 +39,8 @@ function AuthGate() {
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/revenue" element={<RevenueTimeline />} />
+            <Route path="/" element={<DashboardTab />} />
+            <Route path="/metrics" element={<Dashboard />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/leads" element={<Leads />} />
             <Route path="/leads/:id" element={<LeadDetail />} />

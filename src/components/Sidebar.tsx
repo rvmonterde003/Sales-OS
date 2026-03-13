@@ -7,9 +7,9 @@ import {
   AlertTriangle,
   Scale,
   ChevronDown,
+  LayoutDashboard,
   BarChart3,
   MessageSquare,
-  TrendingUp,
   LogOut,
   HelpCircle,
 } from 'lucide-react';
@@ -56,8 +56,8 @@ export default function Sidebar() {
         {/* Nav */}
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           <div className="space-y-0.5 pb-3">
-            <SidebarLink to="/" icon={BarChart3} label="Business Metrics" active={isActive('/')} end />
-            <SidebarLink to="/revenue" icon={TrendingUp} label="Revenue Timeline" active={isActive('/revenue')} />
+            <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" active={isActive('/')} end />
+            <SidebarLink to="/metrics" icon={BarChart3} label="Business Metrics" active={isActive('/metrics')} />
             <SidebarLink to="/activities" icon={MessageSquare} label="Activities" active={isActive('/activities')} />
             <SidebarLink to="/risk-flags" icon={AlertTriangle} label="Risk Flags" active={isActive('/risk-flags')} />
           </div>

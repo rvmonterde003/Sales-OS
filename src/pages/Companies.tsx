@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { timeAgo, COMPANY_STATUSES } from '../lib/helpers';
+import { timeAgo, formatDate, COMPANY_STATUSES } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
@@ -9,7 +9,7 @@ import { Search, SlidersHorizontal, Check } from 'lucide-react';
 type CompanySort = 'name-az' | 'name-za' | 'newest' | 'oldest';
 
 export default function Companies() {
-  const { companies, contacts, opportunities, salesStages, getUserName } = useData();
+  const { companies, contacts, opportunities, getUserName } = useData();
   const { canSeeRepData } = useRole();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -127,52 +127,38 @@ export default function Companies() {
             <tr className="border-b border-gray-200 bg-gray-50/60">
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Law Firm</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Status</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Pipeline Status</th>
+              <th className="text-center font-medium text-gray-500 px-4 py-2 whitespace-nowrap"># Opps</th>
+              <th className="text-center font-medium text-gray-500 px-4 py-2 whitespace-nowrap"># Contacts</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Last Activity</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Expected Close Date</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Industry</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Firm Size</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Website</th>
-              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Last Activity</th>
-              <th className="text-center font-medium text-gray-500 px-4 py-2 whitespace-nowrap"># Contacts</th>
-              <th className="text-center font-medium text-gray-500 px-4 py-2 whitespace-nowrap"># Deals</th>
-              {canSeeRepData && <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Owner</th>}
+              {canSeeRepData && <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Created by</th>}
             </tr>
           </thead>
           <tbody>
             {filtered.map(company => {
               const companyContacts = contacts.filter(c => c.company_id === company.id);
               const openDeals = opportunities.filter(o => o.company_id === company.id && !o.closed_at);
+              const earliestClose = openDeals
+                .filter(o => o.expected_close_date)
+                .sort((a, b) => new Date(a.expected_close_date).getTime() - new Date(b.expected_close_date).getTime())[0];
               return (
                 <tr key={company.id} className="border-b border-gray-100 group">
                   <td className="px-4 py-2.5">
                     <Link to={`/companies/${company.id}`} className="text-gray-900 hover:text-violet-600 font-medium">{company.name}</Link>
                   </td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.status} /></td>
-                  <td className="px-4 py-2.5">
-                    {(() => {
-                      const activeOpps = opportunities.filter(o => o.company_id === company.id && !o.closed_at);
-                      if (activeOpps.length === 0) {
-                        const closedOpps = opportunities.filter(o => o.company_id === company.id && o.closed_at);
-                        if (closedOpps.length === 0) return <span className="text-gray-300 text-[12px]">--</span>;
-                        const hasWon = closedOpps.some(o => salesStages.find(s => s.id === o.stage_id)?.name === 'Won');
-                        return <StatusBadge status={hasWon ? 'Won' : 'Loss'} variant="tag" />;
-                      }
-                      const best = activeOpps.reduce((a, b) => {
-                        const aOrder = salesStages.find(s => s.id === a.stage_id)?.stage_order ?? 0;
-                        const bOrder = salesStages.find(s => s.id === b.stage_id)?.stage_order ?? 0;
-                        return bOrder > aOrder ? b : a;
-                      });
-                      const stageName = salesStages.find(s => s.id === best.stage_id)?.name;
-                      return stageName ? <StatusBadge status={stageName} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>;
-                    })()}
-                  </td>
+                  <td className="px-4 py-2.5 text-center text-gray-600">{openDeals.length || ''}</td>
+                  <td className="px-4 py-2.5 text-center text-gray-600">{companyContacts.length || ''}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{timeAgo(company.last_activity_at)}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{earliestClose ? formatDate(earliestClose.expected_close_date) : <span className="text-gray-300">--</span>}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{company.industry || '--'}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.firm_size || '--'} variant="tag" /></td>
                   <td className="px-4 py-2.5">{company.website ? (
                     <a href={company.website.startsWith('http') ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:text-violet-800 hover:underline text-[12px]">{company.website}</a>
                   ) : <span className="text-gray-300 text-[12px]">--</span>}</td>
-                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{timeAgo(company.last_activity_at)}</td>
-                  <td className="px-4 py-2.5 text-center text-gray-600">{companyContacts.length || ''}</td>
-                  <td className="px-4 py-2.5 text-center text-gray-600">{openDeals.length || ''}</td>
                   {canSeeRepData && <td className="px-4 py-2.5 text-gray-500 text-[12px]">{getUserName(company.owner_id)}</td>}
                 </tr>
               );

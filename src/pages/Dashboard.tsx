@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { formatCurrency } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
@@ -10,14 +9,11 @@ import {
 const DONUT_COLORS = ['#ef4444', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899'];
 
 export default function Dashboard() {
-  const { opportunities, companies, activities, salesStages, allOpportunities, allCompanies, allActivities } = useData();
+  const { opportunities, companies, salesStages, allOpportunities, allCompanies } = useData();
   const { isExec } = useRole();
 
-  // Exec sees total metrics; reps see their own (already filtered in context); admins see all
   const displayOpps = isExec ? allOpportunities : opportunities;
   const displayCompanies = isExec ? allCompanies : companies;
-  const displayActivities = isExec ? allActivities : activities;
-  const [trackerYear, setTrackerYear] = useState(new Date().getFullYear());
 
   const openOpps = displayOpps.filter(o => !o.closed_at);
   const wonStage = salesStages.find(s => s.name === 'Won');
@@ -136,15 +132,6 @@ export default function Dashboard() {
             <KpiCard label="Win Rate" value={`${opportunities.length > 0 ? ((wins.length / opportunities.length) * 100).toFixed(0) : 0}%`} />
           </div>
 
-          {/* Row 4: Tracker */}
-          <TrackerTable
-            year={trackerYear}
-            onYearChange={setTrackerYear}
-            companies={displayCompanies}
-            opportunities={displayOpps}
-            activities={displayActivities}
-            salesStages={salesStages}
-          />
         </>
       )}
     </div>
@@ -166,145 +153,5 @@ function LegendDot({ color, label }: { color: string; label: string }) {
       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
       {label}
     </span>
-  );
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-interface TrackerProps {
-  year: number;
-  onYearChange: (y: number) => void;
-  companies: { lead_status: string; created_at: string }[];
-  opportunities: { deal_value: number; stage_id: number; created_at: string; closed_at: string | null }[];
-  activities: { activity_type: string; activity_timestamp: string }[];
-  salesStages: { id: number; name: string }[];
-}
-
-function TrackerTable({ year, onYearChange, companies, opportunities, activities, salesStages }: TrackerProps) {
-  const wonStageId = salesStages.find(s => s.name === 'Won')?.id;
-  const lossStageId = salesStages.find(s => s.name === 'Loss')?.id;
-
-  const inMonth = (dateStr: string, m: number) => {
-    const d = new Date(dateStr);
-    return d.getFullYear() === year && d.getMonth() === m;
-  };
-
-  const rows = MONTHS.map((_, m) => {
-    const mqls = companies.filter(c => c.lead_status === 'MQL' && inMonth(c.created_at, m)).length;
-    const sqlsMeetings = companies.filter(c => (c.lead_status === 'SQL' || c.lead_status === 'Qualified') && inMonth(c.created_at, m)).length
-      + activities.filter(a => a.activity_type === 'Meeting' && inMonth(a.activity_timestamp, m)).length;
-
-    const createdOpps = opportunities.filter(o => inMonth(o.created_at, m));
-    const oppsCreatedNum = createdOpps.length;
-    const oppsCreatedVal = createdOpps.reduce((s, o) => s + o.deal_value, 0);
-    const oppsCreatedAov = oppsCreatedNum > 0 ? oppsCreatedVal / oppsCreatedNum : 0;
-
-    const wonOpps = opportunities.filter(o => o.closed_at && inMonth(o.closed_at, m) && o.stage_id === wonStageId);
-    const oppsWonNum = wonOpps.length;
-    const oppsWonVal = wonOpps.reduce((s, o) => s + o.deal_value, 0);
-    const oppsWonAov = oppsWonNum > 0 ? oppsWonVal / oppsWonNum : 0;
-
-    const lostOpps = opportunities.filter(o => o.closed_at && inMonth(o.closed_at, m) && o.stage_id === lossStageId);
-    const oppsLostNum = lostOpps.length;
-    const oppsLostVal = lostOpps.reduce((s, o) => s + o.deal_value, 0);
-
-    return { mqls, sqlsMeetings, oppsCreatedNum, oppsCreatedVal, oppsCreatedAov, oppsWonNum, oppsWonVal, oppsWonAov, oppsLostNum, oppsLostVal };
-  });
-
-  // Totals
-  const totals = rows.reduce((t, r) => ({
-    mqls: t.mqls + r.mqls,
-    sqlsMeetings: t.sqlsMeetings + r.sqlsMeetings,
-    oppsCreatedNum: t.oppsCreatedNum + r.oppsCreatedNum,
-    oppsCreatedVal: t.oppsCreatedVal + r.oppsCreatedVal,
-    oppsWonNum: t.oppsWonNum + r.oppsWonNum,
-    oppsWonVal: t.oppsWonVal + r.oppsWonVal,
-    oppsLostNum: t.oppsLostNum + r.oppsLostNum,
-    oppsLostVal: t.oppsLostVal + r.oppsLostVal,
-  }), { mqls: 0, sqlsMeetings: 0, oppsCreatedNum: 0, oppsCreatedVal: 0, oppsWonNum: 0, oppsWonVal: 0, oppsLostNum: 0, oppsLostVal: 0 });
-
-  const metricLabels = [
-    'MQLs',
-    'SQLs / Meetings Booked',
-    'Opps Created #',
-    'Opps Created $',
-    'Opps Created AOV',
-    'Opps Won #',
-    'Opps Won $',
-    'Opps Won AOV',
-    'Opps Lost #',
-    'Opps Lost $',
-  ];
-
-  const getCell = (r: typeof rows[0], idx: number): string => {
-    switch (idx) {
-      case 0: return r.mqls.toString();
-      case 1: return r.sqlsMeetings.toString();
-      case 2: return r.oppsCreatedNum.toString();
-      case 3: return formatCurrency(r.oppsCreatedVal);
-      case 4: return formatCurrency(r.oppsCreatedAov);
-      case 5: return r.oppsWonNum.toString();
-      case 6: return formatCurrency(r.oppsWonVal);
-      case 7: return formatCurrency(r.oppsWonAov);
-      case 8: return r.oppsLostNum.toString();
-      case 9: return formatCurrency(r.oppsLostVal);
-      default: return '--';
-    }
-  };
-
-  const getTotalCell = (idx: number): string => {
-    switch (idx) {
-      case 0: return totals.mqls.toString();
-      case 1: return totals.sqlsMeetings.toString();
-      case 2: return totals.oppsCreatedNum.toString();
-      case 3: return formatCurrency(totals.oppsCreatedVal);
-      case 4: return totals.oppsCreatedNum > 0 ? formatCurrency(totals.oppsCreatedVal / totals.oppsCreatedNum) : '--';
-      case 5: return totals.oppsWonNum.toString();
-      case 6: return formatCurrency(totals.oppsWonVal);
-      case 7: return totals.oppsWonNum > 0 ? formatCurrency(totals.oppsWonVal / totals.oppsWonNum) : '--';
-      case 8: return totals.oppsLostNum.toString();
-      case 9: return formatCurrency(totals.oppsLostVal);
-      default: return '--';
-    }
-  };
-
-  const now = new Date().getFullYear();
-
-  return (
-    <div className="border border-gray-200 rounded-lg mt-5">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-        <h3 className="text-[13px] font-semibold text-gray-900">Tracker</h3>
-        <div className="flex items-center gap-1">
-          <button onClick={() => onYearChange(year - 1)} className="px-2 py-0.5 text-[12px] text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded">&lsaquo;</button>
-          <span className="text-[12px] font-medium text-gray-700 w-10 text-center">{year}</span>
-          <button onClick={() => onYearChange(year + 1)} disabled={year >= now}
-            className="px-2 py-0.5 text-[12px] text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded disabled:opacity-30">&rsaquo;</button>
-        </div>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-[12px]">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50/60">
-              <th className="text-left font-medium text-gray-500 px-3 py-2 sticky left-0 bg-gray-50/60 min-w-[170px]">Metric</th>
-              {MONTHS.map(m => (
-                <th key={m} className="text-right font-medium text-gray-500 px-3 py-2 min-w-[80px]">{m}</th>
-              ))}
-              <th className="text-right font-semibold text-gray-700 px-3 py-2 min-w-[90px] bg-gray-100/60">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {metricLabels.map((label, idx) => (
-              <tr key={label} className={`border-b border-gray-100 ${idx === 4 || idx === 7 ? 'bg-gray-50/30' : ''}`}>
-                <td className="px-3 py-2 font-medium text-gray-700 sticky left-0 bg-white whitespace-nowrap">{label}</td>
-                {rows.map((r, m) => (
-                  <td key={m} className="px-3 py-2 text-right text-gray-600 tabular-nums">{getCell(r, idx)}</td>
-                ))}
-                <td className="px-3 py-2 text-right font-semibold text-gray-900 bg-gray-50/60 tabular-nums">{getTotalCell(idx)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }

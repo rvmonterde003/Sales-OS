@@ -4,7 +4,8 @@ import { RefreshCw } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
 const routeTitles: Record<string, { title: string }> = {
-  '/': { title: 'Business Metrics' },
+  '/': { title: 'Dashboard' },
+  '/metrics': { title: 'Business Metrics' },
   '/pipeline': { title: 'Deals' },
   '/leads': { title: 'Leads' },
   '/companies': { title: 'Law Firms' },
@@ -13,7 +14,6 @@ const routeTitles: Record<string, { title: string }> = {
   '/risk-flags': { title: 'Risk Flags' },
   '/how-to': { title: 'How To' },
   '/profile': { title: 'Profile' },
-  '/revenue': { title: 'Revenue Timeline' },
 };
 
 export default function Layout() {
