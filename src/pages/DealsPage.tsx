@@ -106,7 +106,7 @@ export default function DealsPage() {
             <span className="w-3.5 h-3.5 rounded bg-orange-400 flex items-center justify-center">
               <span className="text-white text-[8px] font-bold">D</span>
             </span>
-            All Deals
+            All Opportunities
           </button>
           <div className="relative" ref={settingsRef}>
             <button onClick={() => setShowSettings(!showSettings)}

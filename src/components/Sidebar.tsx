@@ -18,10 +18,10 @@ import { useAuth } from '../context/AuthContext';
 
 const recordItems = [
   { to: '/leads', icon: Users, label: 'Leads', color: 'bg-cyan-500' },
+  { to: '/deals', icon: CircleDollarSign, label: 'Opportunities', color: 'bg-orange-400' },
+  { to: '/pipeline', icon: Kanban, label: 'Pipeline View', color: 'bg-indigo-400' },
   { to: '/companies', icon: Building2, label: 'Law Firms', color: 'bg-purple-500' },
   { to: '/contacts', icon: Users, label: 'Contacts', color: 'bg-green-500' },
-  { to: '/deals', icon: CircleDollarSign, label: 'Deals', color: 'bg-orange-400' },
-  { to: '/pipeline', icon: Kanban, label: 'Pipeline View', color: 'bg-indigo-400' },
 ];
 
 export default function Sidebar() {
