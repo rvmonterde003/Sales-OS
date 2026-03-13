@@ -1,18 +1,32 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { timeAgo } from '../lib/helpers';
+import { timeAgo, formatDate } from '../lib/helpers';
 import { useData } from '../context/DataContext';
 import { useRole } from '../hooks/useRole';
 import StatusBadge from '../components/StatusBadge';
 import AddLeadModal from '../components/AddLeadModal';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, SlidersHorizontal, Check } from 'lucide-react';
+
+type LeadSort = 'name-az' | 'name-za' | 'newest' | 'oldest';
 
 export default function Leads() {
   const { companies, contacts, activities } = useData();
   const { canCreate } = useRole();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<LeadSort>('newest');
+  const [showSettings, setShowSettings] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   // Leads = MQL, SQL, Qualified (without opportunities), or Unqualified
   const leads = useMemo(() => {
@@ -21,25 +35,52 @@ export default function Leads() {
     );
   }, [companies]);
 
+  const sources = useMemo(() => [...new Set(leads.map(c => c.source).filter(Boolean))], [leads]);
+
   const getLeadContact = (companyId: number) => {
     return contacts.find(c => c.company_id === companyId);
   };
 
   const filtered = useMemo(() => {
-    return leads.filter(c => {
+    const result = leads.filter(c => {
       const contact = getLeadContact(c.id);
       const contactName = contact ? `${contact.first_name} ${contact.last_name}`.toLowerCase() : '';
       const matchesSearch = contactName.includes(search.toLowerCase()) ||
         c.name.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === 'all' || c.lead_status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesSource = sourceFilter === 'all' || c.source === sourceFilter;
+      return matchesSearch && matchesStatus && matchesSource;
     });
-  }, [leads, contacts, search, statusFilter]);
+    switch (sortBy) {
+      case 'name-az': return result.sort((a, b) => {
+        const ca = getLeadContact(a.id);
+        const cb = getLeadContact(b.id);
+        const na = ca ? `${ca.last_name} ${ca.first_name}` : a.name;
+        const nb = cb ? `${cb.last_name} ${cb.first_name}` : b.name;
+        return na.localeCompare(nb);
+      });
+      case 'name-za': return result.sort((a, b) => {
+        const ca = getLeadContact(a.id);
+        const cb = getLeadContact(b.id);
+        const na = ca ? `${ca.last_name} ${ca.first_name}` : a.name;
+        const nb = cb ? `${cb.last_name} ${cb.first_name}` : b.name;
+        return nb.localeCompare(na);
+      });
+      case 'newest': return result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      case 'oldest': return result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      default: return result;
+    }
+  }, [leads, contacts, search, statusFilter, sourceFilter, sortBy]);
 
   const getLatestActivity = (companyId: number) => {
     const act = activities.find(a => a.company_id === companyId);
     return act ? timeAgo(act.activity_timestamp) : '--';
   };
+
+  const activeFilters = [
+    statusFilter !== 'all' ? { label: `Stage: ${statusFilter}`, clear: () => setStatusFilter('all') } : null,
+    sourceFilter !== 'all' ? { label: `Source: ${sourceFilter}`, clear: () => setSourceFilter('all') } : null,
+  ].filter(Boolean) as { label: string; clear: () => void }[];
 
   return (
     <div className="flex flex-col h-[calc(100vh-46px)]">
@@ -51,6 +92,29 @@ export default function Leads() {
             </span>
             All Leads
           </button>
+          <div className="relative" ref={settingsRef}>
+            <button onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center gap-1.5 text-[12px] text-gray-500 border border-gray-200 rounded-md px-2.5 py-1.5 hover:bg-gray-50">
+              <SlidersHorizontal className="w-3 h-3" /> View settings
+            </button>
+            {showSettings && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-[180px] py-1">
+                <div className="px-3 py-1.5 text-[11px] font-medium text-gray-400 uppercase tracking-wider">Sort by</div>
+                {([
+                  { value: 'newest', label: 'Newest first' },
+                  { value: 'oldest', label: 'Oldest first' },
+                  { value: 'name-az', label: 'Name A → Z' },
+                  { value: 'name-za', label: 'Name Z → A' },
+                ] as { value: LeadSort; label: string }[]).map(opt => (
+                  <button key={opt.value} onClick={() => { setSortBy(opt.value); setShowSettings(false); }}
+                    className="w-full text-left px-3 py-1.5 text-[12px] text-gray-700 hover:bg-gray-50 flex items-center justify-between">
+                    {opt.label}
+                    {sortBy === opt.value && <Check className="w-3 h-3 text-violet-600" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -68,7 +132,7 @@ export default function Leads() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-2 px-5 py-1.5 border-b border-gray-100 bg-white shrink-0">
+      <div className="flex items-center gap-2 px-5 py-1.5 border-b border-gray-100 bg-white shrink-0 flex-wrap">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
           <option value="all">All Stages</option>
@@ -77,8 +141,22 @@ export default function Leads() {
           <option value="Qualified">Qualified</option>
           <option value="Unqualified">Unqualified</option>
         </select>
-        {statusFilter !== 'all' && (
-          <button onClick={() => setStatusFilter('all')} className="text-[11px] text-gray-400 hover:text-gray-600 px-1">Clear</button>
+        <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
+          className="border border-gray-200 rounded-md text-[12px] px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-violet-400">
+          <option value="all">All Sources</option>
+          {sources.map(s => <option key={s!} value={s!}>{s}</option>)}
+        </select>
+        {activeFilters.length > 0 && (
+          <>
+            {activeFilters.map(f => (
+              <span key={f.label} className="text-[11px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium">
+                {f.label}
+                <button onClick={f.clear} className="ml-1 text-violet-400 hover:text-violet-700">&times;</button>
+              </span>
+            ))}
+            <button onClick={() => { setStatusFilter('all'); setSourceFilter('all'); }}
+              className="text-[11px] text-gray-400 hover:text-gray-600 px-1">Clear all</button>
+          </>
         )}
       </div>
 
@@ -89,6 +167,7 @@ export default function Leads() {
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Contact</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Stage</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Source</th>
+              <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Date Added</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Email</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">Phone</th>
               <th className="text-left font-medium text-gray-500 px-4 py-2 whitespace-nowrap">LinkedIn</th>
@@ -107,6 +186,7 @@ export default function Leads() {
                   </td>
                   <td className="px-4 py-2.5"><StatusBadge status={company.lead_status} variant="tag" /></td>
                   <td className="px-4 py-2.5">{company.source ? <StatusBadge status={company.source} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>}</td>
+                  <td className="px-4 py-2.5 text-gray-500 text-[12px]">{formatDate(company.created_at)}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact?.email || '--'}</td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact?.phone || '--'}</td>
                   <td className="px-4 py-2.5">
@@ -122,7 +202,7 @@ export default function Leads() {
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-[13px] text-gray-400">No leads found</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-[13px] text-gray-400">No leads found</td></tr>
             )}
           </tbody>
         </table>

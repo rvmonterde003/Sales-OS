@@ -157,7 +157,18 @@ export default function Contacts() {
                   <td className="px-4 py-2.5">
                     {(() => {
                       const status = getContactStatus(contact.company_id);
-                      return status !== '--' ? <StatusBadge status={status} variant="tag" /> : <span className="text-gray-300 text-[12px]">--</span>;
+                      if (status === '--') return <span className="text-gray-300 text-[12px]">--</span>;
+                      if (status.includes(' - ')) {
+                        const [prefix, suffix] = status.split(' - ');
+                        return (
+                          <span className="inline-flex items-center gap-0.5">
+                            <StatusBadge status={prefix} variant="tag" />
+                            <span className="text-[11px] text-gray-400 mx-0.5">-</span>
+                            <StatusBadge status={suffix} variant="tag" />
+                          </span>
+                        );
+                      }
+                      return <StatusBadge status={status} variant="tag" />;
                     })()}
                   </td>
                   <td className="px-4 py-2.5 text-gray-500 text-[12px]">{contact.email || '--'}</td>
